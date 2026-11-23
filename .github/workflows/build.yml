@@ -1,194 +1,51 @@
-name: build
+name: Build LOS 19.1 A57 Rivenmax
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    env:
-      SYNC_DIR: /home/runner/work/A57-LOS18.1-Rivenmax/A57-LOS18.1-Rivenmax
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Free Disk Agresif
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
-          sudo apt-get clean || true
-          df -h
-
-      - name: Install Dependencies
+      - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 repo
 
-      - name: Setup Repo Tool
+      - name: Repo init
         run: |
-          mkdir -p ~/bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-          chmod a+x ~/bin/repo
-          echo "$HOME/bin" >> $GITHUB_PATH
+          mkdir -p ~/android/lineage && cd ~/android/lineage
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          mkdir -p .repo/local_manifests
+          cp $GITHUB_WORKSPACE/local_manifests/a57.xml .repo/local_manifests/
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-      - name: Init Manifest
+      - name: Restore release keys
         run: |
-          mkdir -p $SYNC_DIR
-          cd $SYNC_DIR
-          repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs --depth=1 || repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
-
-      - name: Setup Local Manifest - Pake Nama Asli Dari Foto Lu
-        run: |
-          mkdir -p $SYNC_DIR/.repo/local_manifests
-          cat > $SYNC_DIR/.repo/local_manifests/A57.xml <<'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-            <project name="Rivenmax/android_device_oppo_A57" path="device/oppo/A57" remote="github" revision="lineage-18.1" />
-            <project name="Rivenmax/android_device_oppo_thortanium-common" path="device/oppo/thortanium-common" remote="github" revision="lineage-22.1" />
-            <project name="Rivenmax/android_kernel_oppo_msm8937" path="kernel/oppo/msm8937" remote="github" revision="lineage-18.1-k4.9" />
-            <project name="Rivenmax/proprietary_vendor_oppo_A57" path="vendor/oppo/A57" remote="github" revision="lineage-22.1" />
-            <project name="Rivenmax/proprietary_vendor_oppo_thortanium-common" path="vendor/oppo/thortanium-common" remote="github" revision="lineage-22.1" />
-          </manifest>
-          EOF
-          cat $SYNC_DIR/.repo/local_manifests/A57.xml
-
-      - name: Sync
-        run: |
-          cd $SYNC_DIR
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all) || repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j4
-          df -h
-
-      - name: Ambil Fix Dari 22.1 Yang Udah Jadi - Tanpa Camera Biar Nggak Duplikat
-        run: |
-          cd $SYNC_DIR
-          mkdir -p /tmp/fix221
-          cd /tmp/fix221
-          git clone --depth 1 --branch lineage-22.1 https://github.com/TipzTeam/android_device_oppo_A57.git fix221 || git clone --depth 1 --branch lineage-22.1 https://codeberg.org/TipzTeam/android_device_oppo_A57.git fix221
-          cd $SYNC_DIR
-          cp /tmp/fix221/rootdir/etc/fstab.qcom device/oppo/A57/rootdir/etc/fstab.qcom || echo "fstab sudah sama"
-          cp /tmp/fix221/rootdir/etc/init.qcom.rc device/oppo/A57/rootdir/etc/init.qcom.rc || echo "init sudah sama"
-          cp -r /tmp/fix221/overlay/* device/oppo/A57/overlay/ 2>/dev/null || echo "overlay sudah sama"
-          echo "Fix dari 22.1 udah ditempel - Tanpa camera, biar nggak duplikat - Kernel tetep 4.9"
-
-      - name: Patch sensorservice biar nggak Werror
-        run: |
-          cd $SYNC_DIR
-          find frameworks/hardware/interfaces/sensorservice -name "Android.bp" -exec sed -i 's/-Werror/-Wno-error/g' {} \; || true
-          echo "Patched sensorservice"
-
-      - name: Patch thortanium-common 22.1 jadi 18.1
-        run: |
-          cd $SYNC_DIR
-          find device/oppo/thortanium-common vendor/oppo/thortanium-common -name "Android.bp" -exec sed -i '/relative_install_path/d' {} \; || true
-          python3 -c "
-          import pathlib, re
-          for p in list(pathlib.Path('device/oppo/thortanium-common').rglob('Android.bp')) + list(pathlib.Path('vendor/oppo/thortanium-common').rglob('Android.bp')):
-              t = p.read_text(errors='ignore')
-              t = re.sub(r'install_symlink\s*\{[^}]*\},?', '', t, flags=re.DOTALL)
-              p.write_text(t)
-              print('patched', p)
-          "
-          echo "Patched thortanium-common Soong"
-
-      - name: Patch Kernel 4.9 - GCC + StackProtector NONE + Werror
-        run: |
-          cd $SYNC_DIR
-          cd kernel/oppo/msm8937 && git reset --hard && git clean -fd && cd $SYNC_DIR
-          sed -i 's/50100/40900/g' kernel/oppo/msm8937/include/linux/compiler-gcc.h
-          sed -i 's/5\.1 or newer/4.9 or newer/g' kernel/oppo/msm8937/include/linux/compiler-gcc.h
-          find kernel/oppo/msm8937 -name "Makefile" -exec sed -i 's/-Werror//g' {} \; || true
-          find kernel/oppo/msm8937 -name "Kbuild" -exec sed -i 's/-Werror//g' {} \; || true
-          python3 -c "
-          import pathlib
-          for p in pathlib.Path('kernel/oppo/msm8937/arch').rglob('*defconfig'):
-              lines = p.read_text(errors='ignore').splitlines()
-              out = []
-              for l in lines:
-                  if 'CONFIG_CC_STACKPROTECTOR' in l:
-                      continue
-                  out.append(l)
-              out.append('CONFIG_CC_STACKPROTECTOR_NONE=y')
-              out.append('# CONFIG_CC_STACKPROTECTOR_REGULAR is not set')
-              out.append('# CONFIG_CC_STACKPROTECTOR_STRONG is not set')
-              out.append('# CONFIG_CC_STACKPROTECTOR_ALL is not set')
-              p.write_text('\n'.join(out) + '\n')
-              print('patched', p)
-          "
-          grep -r "STACKPROTECTOR" kernel/oppo/msm8937/arch/arm64/configs/ | head -20
-          grep -n "too old" kernel/oppo/msm8937/include/linux/compiler-gcc.h
-          echo "TARGET_KERNEL_ADDITIONAL_FLAGS := KCFLAGS=-Wno-error" >> device/oppo/A57/BoardConfig.mk
-          echo "Kernel dipatch - StackProtector dimatiin total ke NONE biar GCC 4.9 bisa"
-
-      - name: Fix Duplikat Total - Matikan Recovery Updater 22.1 Sekalian
-        run: |
-          cd $SYNC_DIR
-          python3 -c "
-          p = 'device/oppo/A57/Android.mk'
-          lines = open(p).read().splitlines()
-          out = []
-          for l in lines:
-              if 'include' in l and 'thortanium-common' not in l:
-                  continue
-              out.append(l)
-          open(p,'w').write('\n'.join(out) + '\n')
-          "
-          rm -rf device/oppo/thortanium-common/recovery device/oppo/thortanium-common/camera device/oppo/thortanium-common/power device/oppo/thortanium-common/libshims
-          rm -rf device/oppo/A57/recovery
-          sed -i '/recovery/d' device/oppo/thortanium-common/Android.mk || true
-          sed -i '/camera/d' device/oppo/thortanium-common/Android.mk || true
-          sed -i '/power/d' device/oppo/thortanium-common/Android.mk || true
-          sed -i '/TARGET_RECOVERY_UPDATER_LIBS/d' device/oppo/A57/BoardConfig.mk device/oppo/A57/BoardConfigCommon.mk device/oppo/thortanium-common/BoardConfig.mk device/oppo/thortanium-common/BoardConfigCommon.mk 2>/dev/null || true
-          sed -i '/librecovery_updater_oppo/d' device/oppo/A57/BoardConfig.mk device/oppo/A57/BoardConfigCommon.mk device/oppo/thortanium-common/BoardConfig.mk device/oppo/thortanium-common/BoardConfigCommon.mk device/oppo/A57/device.mk device/oppo/thortanium-common/*.mk 2>/dev/null || true
-          cd device/oppo/A57 && git checkout -- camera power libshims 2>/dev/null || git restore camera power libshims 2>/dev/null || echo "restore A57 camera/power"
-          cd $SYNC_DIR
-          rm -f device/oppo/A57/audio/Android.mk device/oppo/A57/rootdir/Android.mk
-          mkdir -p device/oppo/A57/rootdir/etc device/oppo/A57/audio
-          cp device/oppo/thortanium-common/rootdir/etc/fstab.qcom device/oppo/A57/rootdir/etc/fstab.qcom || cp /tmp/fix221/rootdir/etc/fstab.qcom device/oppo/A57/rootdir/etc/fstab.qcom || true
-          cp device/oppo/thortanium-common/rootdir/etc/init.qcom.rc device/oppo/A57/rootdir/etc/init.qcom.rc || true
-          cp device/oppo/thortanium-common/rootdir/etc/*.sh device/oppo/A57/rootdir/etc/ 2>/dev/null || true
-          cp device/oppo/thortanium-common/rootdir/etc/*.rc device/oppo/A57/rootdir/etc/ 2>/dev/null || true
-          cp device/oppo/thortanium-common/audio/audio_effects.xml device/oppo/A57/audio/audio_effects.xml || find device/oppo/thortanium-common -name "audio_effects.xml" -exec cp {} device/oppo/A57/audio/audio_effects.xml \; || true
-          cp device/oppo/thortanium-common/audio/*.conf device/oppo/A57/audio/ 2>/dev/null || true
-          cp device/oppo/thortanium-common/audio/*.xml device/oppo/A57/audio/ 2>/dev/null || true
-          ls -lh device/oppo/A57/rootdir/etc/ device/oppo/A57/audio/
-          echo "Recovery updater 22.1 dimatiin, recovery pake bawaan 18.1"
-
-      - name: Pakai Key Rivenmax - Real Release-Keys
-        run: |
-          cd $SYNC_DIR
+          cd ~/android/lineage
           mkdir -p vendor/lineage-priv/keys
-          echo "${{ secrets.RIVENMAX_RELEASEKEY }}" > vendor/lineage-priv/keys/releasekey.pem
-          echo "${{ secrets.RIVENMAX_RELEASEKEY_X509 }}" > vendor/lineage-priv/keys/releasekey.x509.pem
-          chmod 600 vendor/lineage-priv/keys/releasekey.pem
-          ls -l vendor/lineage-priv/keys/
-          echo "Key Rivenmax terpasang - nanti jadi real release-keys"
+          echo "${{ secrets.RELEASEKEY_PK8 }}" | base64 -d > vendor/lineage-priv/keys/releasekey.pk8
+          echo "${{ secrets.RELEASEKEY_X509 }}" | base64 -d > vendor/lineage-priv/keys/releasekey.x509.pem
+          echo "${{ secrets.PLATFORM_PK8 }}" | base64 -d > vendor/lineage-priv/keys/platform.pk8
+          echo "${{ secrets.PLATFORM_X509 }}" | base64 -d > vendor/lineage-priv/keys/platform.x509.pem
+          echo "${{ secrets.SHARED_PK8 }}" | base64 -d > vendor/lineage-priv/keys/shared.pk8
+          echo "${{ secrets.SHARED_X509 }}" | base64 -d > vendor/lineage-priv/keys/shared.x509.pem
+          echo "${{ secrets.MEDIA_PK8 }}" | base64 -d > vendor/lineage-priv/keys/media.pk8
+          echo "${{ secrets.MEDIA_X509 }}" | base64 -d > vendor/lineage-priv/keys/media.x509.pem
 
       - name: Build
         run: |
-          cd $SYNC_DIR
-          export USE_CCACHE=1
-          export CCACHE_EXEC=/usr/bin/ccache
-          export CCACHE_DIR=/home/runner/.ccache
-          export ALLOW_MISSING_DEPENDENCIES=true
-          export PRODUCT_DEFAULT_DEV_CERTIFICATE=vendor/lineage-priv/keys/releasekey
-          ccache -M 10G
-          ccache -z
-          df -h
+          cd ~/android/lineage
           source build/envsetup.sh
-          lunch lineage_A57-userdebug
+          export PRODUCT_RELEASE_KEYS=vendor/lineage-priv/keys/releasekey
+          lunch lineage_A57-user
           mka bacon -j$(nproc --all)
-
-      - name: Rename ke Rivenmax
-        run: |
-          cd $SYNC_DIR/out/target/product/A57
-          ls -lh *.zip
-          for f in lineage-*.zip; do mv "$f" "LOS-18.1-A57-Rivenmax.zip"; done
-          ls -lh *.zip
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: LOS-18.1-A57-Rivenmax
-          path: |
-            ${{ env.SYNC_DIR }}/out/target/product/A57/*.zip
-            ${{ env.SYNC_DIR }}/out/target/product/A57/*.img
-          if-no-files-found: error
+          name: lineage-19.1-A57-Rivenmax
+          path: ~/android/lineage/out/target/product/A57/*.zip
