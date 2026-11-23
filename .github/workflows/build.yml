@@ -14,7 +14,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip
-          # Install repo - ini yang bikin failed kemarin
+          # Install repo - ini yang bikin failed repo: command not found kemarin
           if ! command -v repo >/dev/null 2>&1; then
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
@@ -38,7 +38,6 @@ jobs:
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
-          # Device tree A57 19.1 - fork Rivenmax
           git clone https://github.com/Rivenmax/android_device_oppo_A57.git -b lineage-19.1 device/oppo/A57 || git clone https://github.com/Rivenmax/A57-LOS19.1-Rivenmax.git -b lineage-19.1 device/oppo/A57
           git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b lineage-19.1 kernel/oppo/msm8937 || echo "kernel pake bawaan repo sync"
           ls -lh device/oppo/A57/
@@ -51,7 +50,6 @@ jobs:
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
           mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
-          # Download vendor19 part dari Release v19.1-working - JANGAN ambil vendor22
           gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax --pattern "vendor19*"
           ls -lh
           cat vendor19*.zip* > vendor19.zip
@@ -66,7 +64,6 @@ jobs:
           echo "=== SEBELUM FIX ==="
           grep -r "oppo_thortanium" . || echo "udah bersih, ga ada oppo_thortanium"
           grep -r "legacy_rild" . || echo "udah bersih, ga ada legacy_rild"
-          # Hapus sisa config 22.1 yang bikin backlight nyangkut
           if grep -rql "oppo_thortanium" .; then
             sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .)
             echo "FIXED: oppo_thortanium -> A57"
@@ -77,12 +74,31 @@ jobs:
           fi
           echo "=== SESUDAH FIX ==="
           grep -r "android.hardware.light" . || echo "cek light manual"
-          grep -r "A57" AndroidProducts.mk lineage_A57.mk 2>/dev/null | head -20
+
+      - name: FIX Kernel 4.9 buat GCC baru - ini yang bikin fail 1h36m di 41%
+        run: |
+          cd ~/los19.1/kernel/oppo/msm8937
+          echo "=== PATCH kernel 4.9 biar bisa build di GCC baru ==="
+          echo "SEBELUM:"
+          grep -r "Wimplicit-function-declaration" Makefile scripts/Makefile.build arch/arm64/Makefile 2>/dev/null | head -5 || echo "ga ketemu di 3 file itu, cek semua"
+          # 1. Hapus flag yang ga dikenal GCC baru - ini penyebab error: unrecognized command line option '-Wimplicit-function-declaration'
+          sed -i 's/-Werror=implicit-function-declaration//g' Makefile scripts/Makefile.build arch/arm64/Makefile 2>/dev/null || true
+          sed -i 's/-Wimplicit-function-declaration//g' Makefile scripts/Makefile.build arch/arm64/Makefile 2>/dev/null || true
+          find . -name "Makefile*" -type f -exec sed -i 's/-Werror=implicit-function-declaration//g; s/-Wimplicit-function-declaration//g' {} \; 2>/dev/null || true
+          # 2. Tambahin flag biar warning ga jadi error
+          echo "KBUILD_CFLAGS += -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=return-mismatch -Wno-error=unused-function" >> Makefile
+          # 3. Pastiin pake clang 11 yang cocok buat 19.1
+          grep -r "TARGET_KERNEL_CLANG_VERSION" ~/los19.1/device/oppo/A57/BoardConfig.mk || echo "TARGET_KERNEL_CLANG_VERSION := 11.0.1" >> ~/los19.1/device/oppo/A57/BoardConfig.mk
+          echo "=== PATCH SELESAI ==="
+          grep -n "Wno-error=implicit" Makefile | head -5
+          grep -n "TARGET_KERNEL_CLANG_VERSION" ~/los19.1/device/oppo/A57/BoardConfig.mk
 
       - name: Build
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export TARGET_KERNEL_CLANG_VERSION=11.0.1
           source build/envsetup.sh
           breakfast A57
           brunch A57
