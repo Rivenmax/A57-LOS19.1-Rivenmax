@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Free Disk Space - PAKE ACTION RESMI, BUKAN MANUAL LAGI
+      - name: Free Disk Space - PAKE ACTION RESMI
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -42,29 +42,26 @@ jobs:
           git config --global user.email "rivenmax@build.local"
           git config --global color.ui false
 
-      - name: Repo init 19.1 murni - DEPTH CUMA DI INIT, BUKAN DI SYNC
+      - name: Repo init 19.1 + PAKE MANIFEST BARU YANG UDAH BENER
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          # Copy manifest baru lo ke .repo, sekarang udah bener isinya 19.1 main, bukan 18.1 lagi
+          mkdir -p .repo/local_manifests
+          cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
+          echo "=== ISI MANIFEST BARU YANG KEPAKE ==="
+          cat .repo/local_manifests/*.xml
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+          echo "=== CEK DEVICE DARI MANIFEST ==="
+          ls -lh device/oppo/A57/
+          ls -lh kernel/oppo/msm8937/ | head -20
           echo "=== CEK DISK ABIS SYNC ==="
           df -h
 
-      - name: Clone device tree Rivenmax - PAKE main, MANIFEST GAK DIPAKE
-        run: |
-          cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
-          rm -rf device/oppo/A57
-          git clone https://github.com/Rivenmax/android_device_oppo_A57.git -b main --depth 1 device/oppo/A57
-          ls -lh device/oppo/A57/
-          rm -rf kernel/oppo/msm8937
-          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b main --depth 1 kernel/oppo/msm8937 || echo "kernel pake bawaan repo sync"
-          ls -lh kernel/oppo/msm8937/ | head -20
-
       - name: Download vendor 19.1 murni dari Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ 【entity-github¦canonical_name=GitHub】.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
@@ -94,7 +91,7 @@ jobs:
           echo "=== SESUDAH FIX ==="
           grep -r "android.hardware.light" . || echo "cek light manual"
 
-      - name: FIX Kernel 4.9 buat GCC baru - ini yang bikin fail 1h36m di 41%
+      - name: FIX Kernel 4.9 buat GCC baru
         run: |
           cd ~/los19.1/kernel/oppo/msm8937
           echo "=== PATCH kernel 4.9 biar bisa build di GCC baru ==="
