@@ -1,72 +1,85 @@
-name: Build
+name: Build LOS 19.1 Rivenmax
+
 on:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Get tools
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup build env
         run: |
-          sudo apt-get update && sudo apt-get install -y erofs-utils brotli
-          wget -O sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
-      - name: Download vendor 19.1
+          sudo apt update
+          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip
+
+      - name: Repo init 19.1 murni
         run: |
-          mkdir -p v19
-          cd v19
-          for i in 00 01 02 03 04 05 06; do
-            wget -O vendor-part-$i.zip "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v19.1-working/vendor-part-$i.zip"
-          done
-          wget -O vendor19.transfer.list "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v19.1-working/vendor19.transfer.list"
-          cat vendor-part-*.zip > vendor.new.dat.br
-          brotli -d vendor.new.dat.br
-          cp vendor19.transfer.list vendor.transfer.list
-          python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
-          mkdir -p ../vendor19
-          sudo mkdir -p /mnt/v19
-          sudo mount -o loop,ro vendor.img /mnt/v19
-          sudo cp -a /mnt/v19/. ../vendor19/
-          sudo chown -R $(whoami) ../vendor19
-          sudo umount /mnt/v19
-          ls ../vendor19/
-      - name: Download vendor 22.1
+          mkdir -p ~/los19.1 && cd ~/los19.1
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+      - name: Clone device tree Rivenmax 19.1 (A57 bersih)
         run: |
-          mkdir -p v22
-          cd v22
-          for i in 00 01 02 03 04 05 06 07; do
-            wget -O vendor22-part-$i.zip "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v22.1-working/vendor22-part-$i.zip"
-          done
-          wget -O vendor22.transfer.list "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v22.1-working/vendor22.transfer.list"
-          cat vendor22-part-*.zip > vendor.new.dat.br
-          brotli -d vendor.new.dat.br
-          cp vendor22.transfer.list vendor.transfer.list
-          python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
-          mkdir -p ../vendor22
-          sudo mkdir -p /mnt/v22
-          sudo mount -o loop,ro vendor.img /mnt/v22
-          sudo cp -a /mnt/v22/. ../vendor22/
-          sudo chown -R $(whoami) ../vendor22
-          sudo umount /mnt/v22
-          ls ../vendor22/
-      - name: Diff vendor 19.1 vs 22.1 FULL
+          cd ~/los19.1
+          git clone https://github.com/Rivenmax/A57-LOS19.1-Rivenmax.git -b lineage-19.1 device/oppo/A57
+          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b lineage-19.1 kernel/oppo/msm8937
+
+      - name: Download vendor 19.1 murni dari Release
         run: |
-          echo "=== lib64 ===" > diff-full.txt
-          diff -r vendor19/lib64 vendor22/lib64 >> diff-full.txt 2>&1 || true
-          echo "=== lib ===" >> diff-full.txt
-          diff -r vendor19/lib vendor22/lib >> diff-full.txt 2>&1 || true
-          echo "=== bin ===" >> diff-full.txt
-          diff -r vendor19/bin vendor22/bin >> diff-full.txt 2>&1 || true
-          echo "=== etc ===" >> diff-full.txt
-          diff -r vendor19/etc vendor22/etc >> diff-full.txt 2>&1 || true
-          echo "=== SPECIFIC ===" >> diff-full.txt
-          ls -l vendor19/lib64/libril* vendor22/lib64/libril* >> diff-full.txt 2>&1 || true
-          ls -l vendor19/lib/hw/lights* vendor22/lib/hw/lights* >> diff-full.txt 2>&1 || true
-          ls -l vendor19/lib/hw/camera* vendor22/lib/hw/camera* >> diff-full.txt 2>&1 || true
-          ls -l vendor19/bin/rild vendor22/bin/rild >> diff-full.txt 2>&1 || true
-          ls -l vendor19/bin/hw/* vendor22/bin/hw/* >> diff-full.txt 2>&1 || true
-          cat diff-full.txt
-      - name: Upload diff full
+          cd ~/los19.1
+          mkdir -p vendor/oppo/A57
+          # Download vendor19 part yang udah lo upload di Release v19.1-working
+          # Jangan ambil vendor22 sama sekali
+          gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax --pattern "vendor19*"
+          cat vendor19*.zip.part* > vendor19.zip 2>/dev/null || cat vendor19*.zip* > vendor19.zip
+          unzip -o vendor19.zip -d vendor/oppo/A57
+          ls -lh vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
+
+      - name: FIX Layar ga mau mati - Balikin Lights ke A57
+        run: |
+          cd ~/los19.1/device/oppo/A57
+          # Hapus sisa config 22.1 yang bikin backlight nyangkut
+          grep -r "oppo_thortanium" . && sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .) || echo "udah bersih, ga ada oppo_thortanium"
+          grep -r "legacy_rild" . && sed -i '/legacy_rild/d' $(grep -rl "legacy_rild" .) || echo "udah bersih, ga ada legacy_rild"
+          # Pastiin lights service yang dipanggil itu yang A57
+          grep -r "android.hardware.light" .
+
+      - name: Build
+        run: |
+          cd ~/los19.1
+          source build/envsetup.sh
+          breakfast A57
+          brunch A57
+
+      - name: Sign pake key Rivenmax
+        env:
+          RELEASEKEY_PK8: ${{ secrets.RELEASEKEY_PK8 }}
+          RELEASEKEY_X509: ${{ secrets.RELEASEKEY_X509 }}
+          PLATFORM_PK8: ${{ secrets.PLATFORM_PK8 }}
+          PLATFORM_X509: ${{ secrets.PLATFORM_X509 }}
+          SHARED_PK8: ${{ secrets.SHARED_PK8 }}
+          SHARED_X509: ${{ secrets.SHARED_X509 }}
+          MEDIA_PK8: ${{ secrets.MEDIA_PK8 }}
+          MEDIA_X509: ${{ secrets.MEDIA_X509 }}
+        run: |
+          cd ~/los19.1
+          mkdir -p ~/.android-certs
+          echo "$RELEASEKEY_PK8" | base64 -d > ~/.android-certs/releasekey.pk8
+          echo "$RELEASEKEY_X509" | base64 -d > ~/.android-certs/releasekey.x509.pem
+          echo "$PLATFORM_PK8" | base64 -d > ~/.android-certs/platform.pk8
+          echo "$PLATFORM_X509" | base64 -d > ~/.android-certs/platform.x509.pem
+          echo "$SHARED_PK8" | base64 -d > ~/.android-certs/shared.pk8
+          echo "$SHARED_X509" | base64 -d > ~/.android-certs/shared.x509.pem
+          echo "$MEDIA_PK8" | base64 -d > ~/.android-certs/media.pk8
+          echo "$MEDIA_X509" | base64 -d > ~/.android-certs/media.x509.pem
+          ./build/tools/releasetools/sign_target_files_apks.py -o -d ~/.android-certs $OUT/obj/PACKAGING/target_files_intermediates/*.zip signed-target.zip
+          ./build/tools/releasetools/ota_from_target_files.py -k ~/.android-certs/releasekey --block signed-target.zip lineage-19.1-RIVENMAX-A57-signed.zip
+
+      - name: Upload hasil
         uses: actions/upload-artifact@v4
         with:
-          name: vendor-diff-full
-          path: diff-full.txt
+          name: lineage-19.1-RIVENMAX-A57
+          path: ~/los19.1/lineage-19.1-RIVENMAX-A57-signed.zip
