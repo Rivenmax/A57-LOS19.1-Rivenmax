@@ -22,7 +22,8 @@ jobs:
           brotli -d vendor.new.dat.br
           cp vendor19.transfer.list vendor.transfer.list
           python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
-          mkdir -p ../vendor19 /mnt/v19
+          mkdir -p ../vendor19
+          sudo mkdir -p /mnt/v19
           sudo mount -o loop,ro vendor.img /mnt/v19
           cp -a /mnt/v19/. ../vendor19/
           sudo umount /mnt/v19
@@ -39,7 +40,8 @@ jobs:
           brotli -d vendor.new.dat.br
           cp vendor22.transfer.list vendor.transfer.list
           python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
-          mkdir -p ../vendor22 /mnt/v22
+          mkdir -p ../vendor22
+          sudo mkdir -p /mnt/v22
           sudo mount -o loop,ro vendor.img /mnt/v22
           cp -a /mnt/v22/. ../vendor22/
           sudo umount /mnt/v22
