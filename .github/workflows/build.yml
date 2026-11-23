@@ -23,7 +23,7 @@ jobs:
           cp vendor19.transfer.list vendor.transfer.list
           python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
           mkdir -p ../vendor19
-          dump.erofs --extract=../vendor19 vendor.img
+          fsck.erofs --extract=../vendor19 vendor.img
           ls ../vendor19/
       - name: Download vendor 22.1
         run: |
@@ -38,7 +38,7 @@ jobs:
           cp vendor22.transfer.list vendor.transfer.list
           python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
           mkdir -p ../vendor22
-          dump.erofs --extract=../vendor22 vendor.img
+          fsck.erofs --extract=../vendor22 vendor.img
           ls ../vendor22/
       - name: Diff vendor 19.1 vs 22.1
         run: |
