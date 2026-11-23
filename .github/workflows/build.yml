@@ -42,21 +42,49 @@ jobs:
           git config --global user.email "rivenmax@build.local"
           git config --global color.ui false
 
-      - name: Repo init 19.1 + PAKE MANIFEST BARU YANG UDAH BENER
+      - name: Repo init 19.1 murni - MANIFEST KOSONG, JADI GA FAIL LAGI
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
-          echo "=== ISI MANIFEST BARU YANG KEPAKE ==="
+          echo "=== ISI MANIFEST YANG KEPAKE (HARUSNYA KOSONG, CUMA REMOTE DOANG) ==="
           cat .repo/local_manifests/*.xml
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
-          echo "=== CEK DEVICE DARI MANIFEST ==="
-          ls -lh device/oppo/A57/
-          ls -lh kernel/oppo/msm8937/ | head -20
           echo "=== CEK DISK ABIS SYNC ==="
           df -h
+
+      - name: Clone device - NYOBA SEMUA BRANCH, PAKE TOKEN
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd ~/los19.1
+          export PATH="$HOME/bin:$PATH"
+          rm -rf device/oppo/A57
+          for BR in main lineage-19.1 lineage-18.1-k4.9 lineage-18.1; do
+            echo "Coba device branch $BR..."
+            if git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_device_oppo_A57.git" -b "$BR" --depth 1 device/oppo/A57; then
+              echo "BERHASIL device branch $BR"
+              break
+            else
+              echo "Gagal $BR, coba berikutnya"
+              rm -rf device/oppo/A57
+            fi
+          done
+          ls -lh device/oppo/A57/
+          rm -rf kernel/oppo/msm8937
+          for BR in main lineage-19.1 lineage-18.1-k4.9 lineage-18.1; do
+            echo "Coba kernel branch $BR..."
+            if git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_kernel_oppo_msm8937.git" -b "$BR" --depth 1 kernel/oppo/msm8937; then
+              echo "BERHASIL kernel branch $BR"
+              break
+            else
+              echo "Gagal $BR, coba berikutnya"
+              rm -rf kernel/oppo/msm8937
+            fi
+          done
+          ls -lh kernel/oppo/msm8937/ | head -20
 
       - name: Download vendor 19.1 murni dari Release
         env:
