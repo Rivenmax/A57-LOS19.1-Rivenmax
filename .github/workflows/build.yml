@@ -22,7 +22,6 @@ jobs:
         run: |
           df -h
           free -h
-          echo "Kalo / masih di bawah 40GB free, build bakal fail lagi"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,15 +42,14 @@ jobs:
           git config --global user.email "rivenmax@build.local"
           git config --global color.ui false
 
-      - name: Repo init 19.1 murni - HEMAT DISK PAKE DEPTH 1
+      - name: Repo init 19.1 murni - DEPTH CUMA DI INIT, BUKAN DI SYNC
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --depth=1
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
           echo "=== CEK DISK ABIS SYNC ==="
           df -h
-          du -sh .repo 2>/dev/null | head -5
 
       - name: Clone device tree Rivenmax - PAKE main, MANIFEST GAK DIPAKE
         run: |
