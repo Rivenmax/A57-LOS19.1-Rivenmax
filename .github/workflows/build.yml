@@ -1,51 +1,23 @@
-name: Build LOS 19.1 A57 Rivenmax
+name: Build LOS 19.1 A57 Rivenmax from ZIP
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install deps
+      - uses: actions/checkout@v4
+      - name: Download working ZIPs
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 repo
-
-      - name: Repo init
+          wget -O 19.1.zip "https://sourceforge.net/projects/a57-los/files/lineage-19.1-20250522-UNOFFICIAL-A57.zip/download"
+          ls -lh 19.1.zip
+      - name: Extract vendor from working ZIP in Linux
         run: |
-          mkdir -p ~/android/lineage && cd ~/android/lineage
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
-          mkdir -p .repo/local_manifests
-          cp $GITHUB_WORKSPACE/local_manifests/a57.xml .repo/local_manifests/
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-
-      - name: Restore release keys
-        run: |
-          cd ~/android/lineage
-          mkdir -p vendor/lineage-priv/keys
-          echo "${{ secrets.RELEASEKEY_PK8 }}" | base64 -d > vendor/lineage-priv/keys/releasekey.pk8
-          echo "${{ secrets.RELEASEKEY_X509 }}" | base64 -d > vendor/lineage-priv/keys/releasekey.x509.pem
-          echo "${{ secrets.PLATFORM_PK8 }}" | base64 -d > vendor/lineage-priv/keys/platform.pk8
-          echo "${{ secrets.PLATFORM_X509 }}" | base64 -d > vendor/lineage-priv/keys/platform.x509.pem
-          echo "${{ secrets.SHARED_PK8 }}" | base64 -d > vendor/lineage-priv/keys/shared.pk8
-          echo "${{ secrets.SHARED_X509 }}" | base64 -d > vendor/lineage-priv/keys/shared.x509.pem
-          echo "${{ secrets.MEDIA_PK8 }}" | base64 -d > vendor/lineage-priv/keys/media.pk8
-          echo "${{ secrets.MEDIA_X509 }}" | base64 -d > vendor/lineage-priv/keys/media.x509.pem
-
-      - name: Build
-        run: |
-          cd ~/android/lineage
-          source build/envsetup.sh
-          export PRODUCT_RELEASE_KEYS=vendor/lineage-priv/keys/releasekey
-          lunch lineage_A57-user
-          mka bacon -j$(nproc --all)
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: lineage-19.1-A57-Rivenmax
-          path: ~/android/lineage/out/target/product/A57/*.zip
+          sudo apt-get update && sudo apt-get install -y erofs-utils brotli python3
+          unzip -o 19.1.zip vendor.new.dat.br vendor.transfer.list -d raw/
+          cd raw && brotli -d vendor.new.dat.br
+          python3 $GITHUB_WORKSPACE/tools/sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
+          mkdir -p vendor-extracted
+          dump.erofs --extract=vendor-extracted vendor.img
+          ls vendor-extracted/
