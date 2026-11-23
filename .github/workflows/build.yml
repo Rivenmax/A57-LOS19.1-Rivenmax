@@ -25,7 +25,8 @@ jobs:
           mkdir -p ../vendor19
           sudo mkdir -p /mnt/v19
           sudo mount -o loop,ro vendor.img /mnt/v19
-          cp -a /mnt/v19/. ../vendor19/
+          sudo cp -a /mnt/v19/. ../vendor19/
+          sudo chown -R $(whoami) ../vendor19
           sudo umount /mnt/v19
           ls ../vendor19/
       - name: Download vendor 22.1
@@ -43,7 +44,8 @@ jobs:
           mkdir -p ../vendor22
           sudo mkdir -p /mnt/v22
           sudo mount -o loop,ro vendor.img /mnt/v22
-          cp -a /mnt/v22/. ../vendor22/
+          sudo cp -a /mnt/v22/. ../vendor22/
+          sudo chown -R $(whoami) ../vendor22
           sudo umount /mnt/v22
           ls ../vendor22/
       - name: Diff vendor 19.1 vs 22.1
