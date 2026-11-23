@@ -7,25 +7,22 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Free Disk Space - WAJIB, biar ga No space left lagi
+      - name: Free Disk Space - PAKE ACTION RESMI, BUKAN MANUAL LAGI
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Cek disk abis dibersihin
         run: |
-          echo "=== SEBELUM BERSIH ==="
-          df -h
-          # Hapus yang gede-gede tapi ga kepake buat build ROM
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/hostedtoolcache
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /opt/az
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/share/miniconda
-          sudo apt clean
-          sudo rm -rf /var/lib/apt/lists/*
-          echo "=== SESUDAH BERSIH ==="
           df -h
           free -h
+          echo "Kalo / masih di bawah 40GB free, build bakal fail lagi"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,24 +43,25 @@ jobs:
           git config --global user.email "rivenmax@build.local"
           git config --global color.ui false
 
-      - name: Repo init 19.1 murni
+      - name: Repo init 19.1 murni - HEMAT DISK PAKE DEPTH 1
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --depth=1
           echo "=== CEK DISK ABIS SYNC ==="
           df -h
+          du -sh .repo 2>/dev/null | head -5
 
       - name: Clone device tree Rivenmax - PAKE main, MANIFEST GAK DIPAKE
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           rm -rf device/oppo/A57
-          git clone https://github.com/Rivenmax/android_device_oppo_A57.git -b main device/oppo/A57
+          git clone https://github.com/Rivenmax/android_device_oppo_A57.git -b main --depth 1 device/oppo/A57
           ls -lh device/oppo/A57/
           rm -rf kernel/oppo/msm8937
-          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b main kernel/oppo/msm8937 || echo "kernel pake bawaan repo sync"
+          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b main --depth 1 kernel/oppo/msm8937 || echo "kernel pake bawaan repo sync"
           ls -lh kernel/oppo/msm8937/ | head -20
 
       - name: Download vendor 19.1 murni dari Release
@@ -110,12 +108,14 @@ jobs:
           echo "=== PATCH SELESAI ==="
           grep -n "Wno-error=implicit" Makefile | head -5
 
-      - name: Build
+      - name: Build - MATIIN CCACHE BIAR HEMAT DISK
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           export ALLOW_MISSING_DEPENDENCIES=true
           export TARGET_KERNEL_CLANG_VERSION=11.0.1
+          export USE_CCACHE=0
+          export CCACHE_DISABLE=1
           source build/envsetup.sh
           breakfast A57
           brunch A57
@@ -154,3 +154,4 @@ jobs:
         with:
           name: lineage-19.1-RIVENMAX-A57
           path: ~/los19.1/lineage-19.1-RIVENMAX-A57-signed.zip
+        
