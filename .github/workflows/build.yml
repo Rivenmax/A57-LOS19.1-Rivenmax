@@ -48,18 +48,25 @@ jobs:
           sudo chown -R $(whoami) ../vendor22
           sudo umount /mnt/v22
           ls ../vendor22/
-      - name: Diff vendor 19.1 vs 22.1
+      - name: Diff vendor 19.1 vs 22.1 FULL
         run: |
-          echo "=== libril ===" > diff.txt
-          diff -r vendor19/lib vendor22/lib 2>&1 | head -n 200 >> diff.txt || true
-          echo "=== props ===" >> diff.txt
-          cat vendor19/build.prop 2>/dev/null >> diff.txt || true
-          cat vendor22/build.prop 2>/dev/null >> diff.txt || true
-          cat diff.txt
-          ls -R vendor19/lib | head -n 100
-          ls -R vendor22/lib | head -n 100
-      - name: Upload diff
+          echo "=== lib64 ===" > diff-full.txt
+          diff -r vendor19/lib64 vendor22/lib64 >> diff-full.txt 2>&1 || true
+          echo "=== lib ===" >> diff-full.txt
+          diff -r vendor19/lib vendor22/lib >> diff-full.txt 2>&1 || true
+          echo "=== bin ===" >> diff-full.txt
+          diff -r vendor19/bin vendor22/bin >> diff-full.txt 2>&1 || true
+          echo "=== etc ===" >> diff-full.txt
+          diff -r vendor19/etc vendor22/etc >> diff-full.txt 2>&1 || true
+          echo "=== SPECIFIC ===" >> diff-full.txt
+          ls -l vendor19/lib64/libril* vendor22/lib64/libril* >> diff-full.txt 2>&1 || true
+          ls -l vendor19/lib/hw/lights* vendor22/lib/hw/lights* >> diff-full.txt 2>&1 || true
+          ls -l vendor19/lib/hw/camera* vendor22/lib/hw/camera* >> diff-full.txt 2>&1 || true
+          ls -l vendor19/bin/rild vendor22/bin/rild >> diff-full.txt 2>&1 || true
+          ls -l vendor19/bin/hw/* vendor22/bin/hw/* >> diff-full.txt 2>&1 || true
+          cat diff-full.txt
+      - name: Upload diff full
         uses: actions/upload-artifact@v4
         with:
-          name: vendor-diff
-          path: diff.txt
+          name: vendor-diff-full
+          path: diff-full.txt
