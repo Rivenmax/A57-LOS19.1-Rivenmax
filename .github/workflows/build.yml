@@ -47,7 +47,6 @@ jobs:
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
-          # Copy manifest baru lo ke .repo, sekarang udah bener isinya 19.1 main, bukan 18.1 lagi
           mkdir -p .repo/local_manifests
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           echo "=== ISI MANIFEST BARU YANG KEPAKE ==="
@@ -61,7 +60,7 @@ jobs:
 
       - name: Download vendor 19.1 murni dari Release
         env:
-          GH_TOKEN: ${{ 【entity-github¦canonical_name=GitHub】.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
