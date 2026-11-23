@@ -14,45 +14,79 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip
+          # Install repo - ini yang bikin failed kemarin
+          if ! command -v repo >/dev/null 2>&1; then
+            mkdir -p ~/bin
+            curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+            chmod a+x ~/bin/repo
+          fi
+          echo "$HOME/bin" >> $GITHUB_PATH
+          export PATH="$HOME/bin:$PATH"
+          repo --version || ~/bin/repo --version
+          git config --global user.name "Rivenmax"
+          git config --global user.email "rivenmax@build.local"
+          git config --global color.ui false
 
       - name: Repo init 19.1 murni
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
+          export PATH="$HOME/bin:$PATH"
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
       - name: Clone device tree Rivenmax 19.1 (A57 bersih)
         run: |
           cd ~/los19.1
-          git clone https://github.com/Rivenmax/A57-LOS19.1-Rivenmax.git -b lineage-19.1 device/oppo/A57
-          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b lineage-19.1 kernel/oppo/msm8937
+          export PATH="$HOME/bin:$PATH"
+          # Device tree A57 19.1 - fork Rivenmax
+          git clone https://github.com/Rivenmax/android_device_oppo_A57.git -b lineage-19.1 device/oppo/A57 || git clone https://github.com/Rivenmax/A57-LOS19.1-Rivenmax.git -b lineage-19.1 device/oppo/A57
+          git clone https://github.com/Rivenmax/android_kernel_oppo_msm8937.git -b lineage-19.1 kernel/oppo/msm8937 || echo "kernel pake bawaan repo sync"
+          ls -lh device/oppo/A57/
+          ls -lh kernel/oppo/msm8937/ | head -20
 
       - name: Download vendor 19.1 murni dari Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
-          # Download vendor19 part yang udah lo upload di Release v19.1-working
-          # Jangan ambil vendor22 sama sekali
+          mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
+          # Download vendor19 part dari Release v19.1-working - JANGAN ambil vendor22
           gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax --pattern "vendor19*"
-          cat vendor19*.zip.part* > vendor19.zip 2>/dev/null || cat vendor19*.zip* > vendor19.zip
-          unzip -o vendor19.zip -d vendor/oppo/A57
-          ls -lh vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
+          ls -lh
+          cat vendor19*.zip* > vendor19.zip
+          unzip -o vendor19.zip -d ~/los19.1/vendor/oppo/A57
+          ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
+          echo "=== CEK JANGAN SAMPE ADA oppo_thortanium DI VENDOR 19.1 ==="
+          ls ~/los19.1/vendor/oppo/A57/bin/hw/ | grep -i thortanium || echo "BERSIH, ga ada thortanium"
 
       - name: FIX Layar ga mau mati - Balikin Lights ke A57
         run: |
           cd ~/los19.1/device/oppo/A57
+          echo "=== SEBELUM FIX ==="
+          grep -r "oppo_thortanium" . || echo "udah bersih, ga ada oppo_thortanium"
+          grep -r "legacy_rild" . || echo "udah bersih, ga ada legacy_rild"
           # Hapus sisa config 22.1 yang bikin backlight nyangkut
-          grep -r "oppo_thortanium" . && sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .) || echo "udah bersih, ga ada oppo_thortanium"
-          grep -r "legacy_rild" . && sed -i '/legacy_rild/d' $(grep -rl "legacy_rild" .) || echo "udah bersih, ga ada legacy_rild"
-          # Pastiin lights service yang dipanggil itu yang A57
-          grep -r "android.hardware.light" .
+          if grep -rql "oppo_thortanium" .; then
+            sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .)
+            echo "FIXED: oppo_thortanium -> A57"
+          fi
+          if grep -rql "legacy_rild" .; then
+            sed -i '/legacy_rild/d' $(grep -rl "legacy_rild" .)
+            echo "FIXED: legacy_rild dihapus"
+          fi
+          echo "=== SESUDAH FIX ==="
+          grep -r "android.hardware.light" . || echo "cek light manual"
+          grep -r "A57" AndroidProducts.mk lineage_A57.mk 2>/dev/null | head -20
 
       - name: Build
         run: |
           cd ~/los19.1
+          export PATH="$HOME/bin:$PATH"
           source build/envsetup.sh
           breakfast A57
           brunch A57
+          ls -lh $OUT/*.zip
 
       - name: Sign pake key Rivenmax
         env:
@@ -75,8 +109,10 @@ jobs:
           echo "$SHARED_X509" | base64 -d > ~/.android-certs/shared.x509.pem
           echo "$MEDIA_PK8" | base64 -d > ~/.android-certs/media.pk8
           echo "$MEDIA_X509" | base64 -d > ~/.android-certs/media.x509.pem
+          ls -lh ~/.android-certs/
           ./build/tools/releasetools/sign_target_files_apks.py -o -d ~/.android-certs $OUT/obj/PACKAGING/target_files_intermediates/*.zip signed-target.zip
           ./build/tools/releasetools/ota_from_target_files.py -k ~/.android-certs/releasekey --block signed-target.zip lineage-19.1-RIVENMAX-A57-signed.zip
+          ls -lh lineage-19.1-RIVENMAX-A57-signed.zip
 
       - name: Upload hasil
         uses: actions/upload-artifact@v4
