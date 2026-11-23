@@ -1,23 +1,57 @@
-name: Build LOS 19.1 A57 Rivenmax from ZIP
-
+name: Build
 on:
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Download working ZIPs
+      - name: Get tools
         run: |
-          wget -O 19.1.zip "https://sourceforge.net/projects/a57-los/files/lineage-19.1-20250522-UNOFFICIAL-A57.zip/download"
-          ls -lh 19.1.zip
-      - name: Extract vendor from working ZIP in Linux
+          sudo apt-get update && sudo apt-get install -y erofs-utils brotli
+          wget -O sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
+      - name: Download vendor 19.1
         run: |
-          sudo apt-get update && sudo apt-get install -y erofs-utils brotli python3
-          unzip -o 19.1.zip vendor.new.dat.br vendor.transfer.list -d raw/
-          cd raw && brotli -d vendor.new.dat.br
-          python3 $GITHUB_WORKSPACE/tools/sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
-          mkdir -p vendor-extracted
-          dump.erofs --extract=vendor-extracted vendor.img
-          ls vendor-extracted/
+          mkdir -p v19
+          cd v19
+          for i in 00 01 02 03 04 05 06; do
+            wget -O vendor-part-$i.zip "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v19.1-working/vendor-part-$i.zip"
+          done
+          wget -O vendor19.transfer.list "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v19.1-working/vendor19.transfer.list"
+          cat vendor-part-*.zip > vendor.new.dat.br
+          brotli -d vendor.new.dat.br
+          cp vendor19.transfer.list vendor.transfer.list
+          python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
+          mkdir -p ../vendor19
+          dump.erofs --extract=../vendor19 vendor.img
+          ls ../vendor19/
+      - name: Download vendor 22.1
+        run: |
+          mkdir -p v22
+          cd v22
+          for i in 00 01 02 03 04 05 06 07; do
+            wget -O vendor22-part-$i.zip "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v22.1-working/vendor22-part-$i.zip"
+          done
+          wget -O vendor22.transfer.list "https://github.com/Rivenmax/A57-LOS19.1-Rivenmax/releases/download/v22.1-working/vendor22.transfer.list"
+          cat vendor22-part-*.zip > vendor.new.dat.br
+          brotli -d vendor.new.dat.br
+          cp vendor22.transfer.list vendor.transfer.list
+          python3 ../sdat2img.py vendor.transfer.list vendor.new.dat vendor.img
+          mkdir -p ../vendor22
+          dump.erofs --extract=../vendor22 vendor.img
+          ls ../vendor22/
+      - name: Diff vendor 19.1 vs 22.1
+        run: |
+          echo "=== libril ===" > diff.txt
+          diff -r vendor19/lib vendor22/lib 2>&1 | head -n 200 >> diff.txt || true
+          echo "=== props ===" >> diff.txt
+          cat vendor19/build.prop 2>/dev/null >> diff.txt || true
+          cat vendor22/build.prop 2>/dev/null >> diff.txt || true
+          cat diff.txt
+          ls -R vendor19/lib | head -n 100
+          ls -R vendor22/lib | head -n 100
+      - name: Upload diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor-diff
+          path: diff.txt
