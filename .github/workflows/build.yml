@@ -29,7 +29,7 @@ jobs:
       - name: Setup build env
         run: |
           sudo apt update
-          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full
+          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full e2fsprogs
           if ! command -v repo >/dev/null 2>&1; then
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
@@ -66,7 +66,7 @@ jobs:
           echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
           echo "Sukisu095 aman, ga diusik"
 
-      - name: Download vendor 19.1 - FIX BUKAN ZIP, TAPI DAT.BR
+      - name: Download vendor 19.1 - FIX EXTRACT PAKE DEBUGFS, BUKAN 7z
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -75,21 +75,24 @@ jobs:
           mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
           gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
           ls -lh
-          echo "=== GABUNGIN PART JADI vendor.new.dat.br, BUKAN ZIP ==="
+          echo "=== GABUNGIN PART JADI vendor.new.dat.br ==="
           cat vendor-part-00.zip vendor-part-01.zip vendor-part-02.zip vendor-part-03.zip vendor-part-04.zip vendor-part-05.zip vendor-part-06.zip > vendor.new.dat.br
           ls -lh vendor.new.dat.br
-          file vendor.new.dat.br
-          echo "=== UNBROTLI .br JADI .dat ==="
+          echo "=== UNBROTLI ==="
           brotli -d vendor.new.dat.br -o vendor.new.dat
           ls -lh vendor.new.dat
-          echo "=== DOWNLOAD SDAT2IMG ==="
+          echo "=== SDAT2IMG ==="
           curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
-          echo "=== SDAT2IMG JADI vendor.img ==="
           python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
           ls -lh vendor.img
-          echo "=== EXTRACT vendor.img PAKE 7z ==="
+          file vendor.img
+          echo "=== CONVERT SPARSE KE RAW KALO PERLU ==="
+          simg2img vendor.img vendor_raw.img || cp vendor.img vendor_raw.img
+          ls -lh vendor_raw.img
+          file vendor_raw.img
+          echo "=== EXTRACT PAKE DEBUGFS, BUKAN 7z ==="
           mkdir -p /tmp/vendor_out
-          7z x vendor.img -o/tmp/vendor_out -y
+          debugfs -R "rdump / /tmp/vendor_out" vendor_raw.img
           ls -lh /tmp/vendor_out/
           echo "=== COPY ISI VENDOR KE vendor/oppo/A57 ==="
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
