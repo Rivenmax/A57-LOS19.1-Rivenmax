@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
-          repo init -u https://guthub.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           cat .repo/local_manifests/*.xml
@@ -55,12 +55,12 @@ jobs:
 
       - name: Clone device tree Rivenmax - UDAH ADA, GA NOT FOUND LAGI
         env:
-          GH_TOKEN: ${{ guthub.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           rm -rf device/oppo/A57
-          git clone "https://x-access-token:${GH_TOKEN}@guthub.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
           ls -lh device/oppo/A57/
           ls -lh device/oppo/A57/prebuilt/boot.img
           echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
@@ -68,7 +68,7 @@ jobs:
 
       - name: Download vendor 19.1 - FIX EXTRACT PAKE UNSQUASHFS, BUKAN 7z / DEBUGFS
         env:
-          GH_TOKEN: ${{ guthub.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
