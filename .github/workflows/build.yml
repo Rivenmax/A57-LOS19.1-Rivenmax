@@ -111,7 +111,24 @@ jobs:
           fi
           grep -r "android.hardware.light" . || echo "cek light manual"
 
-      - name: Build Rivenmax - PAKE PREBUILT KERNEL, JADI GA FAIL KERNEL LAGI
+      - name: FIX Lunch - Hapus add_lunch_combo obsolete + Pake lunch langsung
+        run: |
+          cd ~/los19.1/device/oppo/A57
+          echo "=== SEBELUM ==="
+          cat vendorsetup.sh
+          cat AndroidProducts.mk
+          echo "=== HAPUS add_lunch_combo YANG OBSOLETE ==="
+          sed -i '/add_lunch_combo/d' vendorsetup.sh
+          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
+          cat vendorsetup.sh
+          echo "=== PASTIIN COMMON_LUNCH_CHOICES ADA ==="
+          grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
+          cat AndroidProducts.mk
+          echo "=== CEK PRODUCT FILE ==="
+          ls -lh *.mk
+          grep -H "PRODUCT_NAME" rivenmax_A57.mk || grep -H "PRODUCT_NAME" *.mk
+
+      - name: Build Rivenmax - PAKE LUNCH LANGSUNG, BUKAN BREAKFAST
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
@@ -120,8 +137,8 @@ jobs:
           export USE_CCACHE=0
           export CCACHE_DISABLE=1
           source build/envsetup.sh
-          breakfast rivenmax_A57
-          brunch rivenmax_A57
+          lunch rivenmax_A57-userdebug
+          mka bacon -j$(nproc --all)
           ls -lh $OUT/*.zip
           df -h
 
