@@ -29,7 +29,7 @@ jobs:
       - name: Setup build env
         run: |
           sudo apt update
-          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full e2fsprogs
+          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full e2fsprogs squashfs-tools
           if ! command -v repo >/dev/null 2>&1; then
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          repo init -u https://guthub.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           cat .repo/local_manifests/*.xml
@@ -55,20 +55,20 @@ jobs:
 
       - name: Clone device tree Rivenmax - UDAH ADA, GA NOT FOUND LAGI
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ guthub.token }}
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           rm -rf device/oppo/A57
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
+          git clone "https://x-access-token:${GH_TOKEN}@guthub.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
           ls -lh device/oppo/A57/
           ls -lh device/oppo/A57/prebuilt/boot.img
           echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
           echo "Sukisu095 aman, ga diusik"
 
-      - name: Download vendor 19.1 - FIX EXTRACT PAKE DEBUGFS, BUKAN 7z
+      - name: Download vendor 19.1 - FIX EXTRACT PAKE UNSQUASHFS, BUKAN 7z / DEBUGFS
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ guthub.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
@@ -86,13 +86,9 @@ jobs:
           python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
           ls -lh vendor.img
           file vendor.img
-          echo "=== CONVERT SPARSE KE RAW KALO PERLU ==="
-          simg2img vendor.img vendor_raw.img || cp vendor.img vendor_raw.img
-          ls -lh vendor_raw.img
-          file vendor_raw.img
-          echo "=== EXTRACT PAKE DEBUGFS, BUKAN 7z ==="
+          echo "=== EXTRACT PAKE UNSQUASHFS - VENDOR LO SQUASHFS LZ4 ==="
           mkdir -p /tmp/vendor_out
-          debugfs -R "rdump / /tmp/vendor_out" vendor_raw.img
+          unsquashfs -d /tmp/vendor_out vendor.img
           ls -lh /tmp/vendor_out/
           echo "=== COPY ISI VENDOR KE vendor/oppo/A57 ==="
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
