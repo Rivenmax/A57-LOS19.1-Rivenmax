@@ -78,7 +78,6 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
           ls -lh device/oppo/A57/
           ls -lh device/oppo/A57/prebuilt/boot.img
-          echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
           echo "Sukisu095 aman, ga diusik"
 
       - name: Download vendor 19.1 - FIX UNSQUASHFS PAKE SUDO + NO-XATTRS
@@ -90,26 +89,99 @@ jobs:
           mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
           gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
           ls -lh
-          echo "=== GABUNGIN PART JADI vendor.new.dat.br ==="
           cat vendor-part-00.zip vendor-part-01.zip vendor-part-02.zip vendor-part-03.zip vendor-part-04.zip vendor-part-05.zip vendor-part-06.zip > vendor.new.dat.br
           ls -lh vendor.new.dat.br
-          echo "=== UNBROTLI ==="
           brotli -d vendor.new.dat.br -o vendor.new.dat
           ls -lh vendor.new.dat
-          echo "=== SDAT2IMG ==="
           curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
           python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
           ls -lh vendor.img
           file vendor.img
-          echo "=== EXTRACT PAKE SUDO UNSQUASHFS -NO-XATTRS ==="
           rm -rf /tmp/vendor_out
           sudo unsquashfs -no-xattrs -d /tmp/vendor_out vendor.img
           sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
           ls -lh /tmp/vendor_out/
-          echo "=== COPY ISI VENDOR KE vendor/oppo/A57 ==="
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
           ls ~/los19.1/vendor/oppo/A57/bin/hw/ | grep -i thortanium || echo "BERSIH, ga ada thortanium"
+
+      - name: FIX Device Tree Otomatis - LO GA PERLU EDIT DI HP LAGI
+        run: |
+          cd ~/los19.1/device/oppo/A57
+          echo "=== SEBELUM - BUKTI FILE LAMA ==="
+          cat rivenmax_A57.mk || echo "rivenmax_A57.mk ga ada"
+          echo "--- device.mk lama ---"
+          cat device.mk || echo "device.mk ga ada"
+          echo "=== TIMPA rivenmax_A57.mk YANG BENER - BIAR PRODUCT_PACKAGES KEISI ==="
+          cat > rivenmax_A57.mk << 'EOF'
+          $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+          $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
+          $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
+          $(call inherit-product, device/oppo/A57/device.mk)
+          PRODUCT_NAME := rivenmax_A57
+          PRODUCT_DEVICE := A57
+          PRODUCT_MANUFACTURER := OPPO
+          PRODUCT_BRAND := OPPO
+          PRODUCT_MODEL := OPPO A57
+          PRODUCT_GMS_CLIENTID_BASE := android-oppo
+          TARGET_VENDOR := oppo
+          TARGET_VENDOR_PRODUCT_NAME := A57
+          PRODUCT_BUILD_PROP_OVERRIDES += \
+              PRIVATE_BUILD_DESC="A57-user 7.1.1 N6F26Q eng.root.20250522.123456 release-keys" \
+              PRODUCT_NAME="A57" \
+              TARGET_DEVICE="A57"
+          BUILD_FINGERPRINT := OPPO/A57/A57:7.1.1/N6F26Q/161111:user/release-keys
+          EOF
+          cat rivenmax_A57.mk
+          echo "=== TIMPA device.mk YANG BENER - MINIMAL TAPI LENGKAP BUAT BOOT ==="
+          cat > device.mk << 'EOF'
+          LOCAL_PATH := device/oppo/A57
+          TARGET_SPECIFIC_HEADER_PATH := $(LOCAL_PATH)/include
+          PRODUCT_PACKAGES += \
+              android.hardware.light@2.0-service.A57 \
+              android.hardware.light@2.0-impl \
+              liblights \
+              android.hardware.health@2.1-service \
+              android.hardware.health@2.1-impl
+          PRODUCT_COPY_FILES += \
+              $(LOCAL_PATH)/prebuilt/boot.img:boot.img
+          PRODUCT_PROPERTY_OVERRIDES += \
+              ro.vendor.build.security_patch=2025-05-22 \
+              ro.build.fingerprint=OPPO/A57/A57:7.1.1/N6F26Q/161111:user/release-keys
+          PRODUCT_AAPT_CONFIG := normal
+          PRODUCT_AAPT_PREF_CONFIG := xxhdpi
+          PRODUCT_AAPT_PREBUILT_DPI := xxhdpi xhdpi hdpi
+          EOF
+          cat device.mk
+          echo "=== FIX vendorsetup.sh ==="
+          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
+          cat vendorsetup.sh
+          echo "=== FIX AndroidProducts.mk ==="
+          cat > AndroidProducts.mk << 'EOF'
+          PRODUCT_MAKEFILES := \
+              $(LOCAL_DIR)/rivenmax_A57.mk
+          COMMON_LUNCH_CHOICES := \
+              rivenmax_A57-userdebug \
+              rivenmax_A57-user \
+              rivenmax_A57-eng
+          EOF
+          cat AndroidProducts.mk
+          echo "=== FIX BoardConfig.mk ==="
+          cat BoardConfig.mk
+          sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
+          sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
+          sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
+          sed -i '/BOARD_PREBUILT_BOOTIMAGE/d' BoardConfig.mk
+          sed -i '/TARGET_PREBUILT_KERNEL/d' BoardConfig.mk
+          sed -i '/TARGET_NO_KERNEL/d' BoardConfig.mk
+          sed -i '/BOARD_KERNEL_IMAGE_NAME/d' BoardConfig.mk
+          echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
+          echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
+          echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
+          echo "TARGET_NO_KERNEL := true" >> BoardConfig.mk
+          echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
+          grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
+          grep "PREBUILT\|NO_KERNEL" BoardConfig.mk
 
       - name: FIX Layar ga mau mati - Balikin Lights ke A57
         run: |
@@ -126,36 +198,9 @@ jobs:
           fi
           grep -r "android.hardware.light" . || echo "cek light manual"
 
-      - name: FIX Lunch + FIX BoardConfig + FIX Soong generated_kernel_includes JADI DUMMY
+      - name: FIX Soong generated_kernel_includes JADI DUMMY
         run: |
-          cd ~/los19.1/device/oppo/A57
-          echo "=== FIX vendorsetup.sh ==="
-          sed -i '/add_lunch_combo/d' vendorsetup.sh
-          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
-          cat vendorsetup.sh
-          echo "=== FIX AndroidProducts.mk ==="
-          grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
-          cat AndroidProducts.mk
-          echo "=== FIX BoardConfig.mk - TARGET_COPY_OUT_VENDOR + PREBUILT BOOT.IMG YANG BENER ==="
-          cat BoardConfig.mk
-          sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
-          echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
-          sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
-          sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
-          sed -i '/BOARD_PREBUILT_BOOTIMAGE/d' BoardConfig.mk
-          sed -i '/TARGET_PREBUILT_KERNEL/d' BoardConfig.mk
-          sed -i '/TARGET_NO_KERNEL/d' BoardConfig.mk
-          sed -i '/BOARD_KERNEL_IMAGE_NAME/d' BoardConfig.mk
-          echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
-          echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
-          echo "TARGET_NO_KERNEL := true" >> BoardConfig.mk
-          echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
-          grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
-          grep "PREBUILT\|NO_KERNEL" BoardConfig.mk
-          grep "PRODUCT_NAME" rivenmax_A57.mk
-          echo "=== FIX Soong - generated_kernel_includes JADI DUMMY ==="
           cd ~/los19.1
-          cat vendor/lineage/build/soong/Android.bp
           python3 - << 'PYEOF'
           import pathlib, re
           p = pathlib.Path("vendor/lineage/build/soong/Android.bp")
@@ -176,7 +221,7 @@ jobs:
           print(p.read_text())
           PYEOF
 
-      - name: Build Rivenmax - PAKE -j2 BIAR GA LOST COMMUNICATION LAGI
+      - name: Build Rivenmax - PAKE -j2 + DIAGNOSTIK KALO BACON FAIL
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
@@ -193,11 +238,17 @@ jobs:
           df -h
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
-          mka bacon -j2 || mka otapackage -j2
-          echo "=== CEK HASIL ZIP ==="
-          ls -lh out/target/product/A57/*.zip || ls -lh $OUT/*.zip
+          mka bacon -j2 || true
+          echo "=== DIAGNOSTIK ==="
           df -h
-          free -h
+          ls -lh out/target/product/A57/ || echo "FOLDER A57 GA ADA"
+          ls -lh out/target/product/A57/*.img || echo "GA ADA .img SAMA SEKALI - BERARTI GA NG-COMPILE"
+          ls -lh out/target/product/A57/*.zip || echo "GA ADA .zip - MAKANYA ln GAGAL"
+          du -sh out/ || true
+          if [ ! -f out/target/product/A57/*.zip ]; then
+            echo "BACON GAGAL BIKIN ZIP, LIAT DIAGNOSTIK DI ATAS"
+            exit 1
+          fi
 
       - name: Sign pake key Rivenmax
         env:
