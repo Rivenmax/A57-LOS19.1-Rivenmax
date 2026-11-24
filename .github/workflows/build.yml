@@ -66,16 +66,22 @@ jobs:
           echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
           echo "Sukisu095 aman, ga diusik"
 
-      - name: Download vendor 19.1 murni dari Release
+      - name: Download vendor 19.1 murni dari Release - DOWNLOAD SEMUA, GA PAKE PATTERN LAGI
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
           mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
-          gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax --pattern "vendor19*"
+          echo "=== LIAT ISI RELEASE v19.1-working ==="
+          gh release view v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
+          echo "=== DOWNLOAD SEMUA ASSET, GA PAKE PATTERN ==="
+          gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
+          echo "=== HASIL DOWNLOAD ==="
           ls -lh
-          cat vendor19*.zip* > vendor19.zip
+          echo "=== GABUNGIN PART ZIP JADI 1 ==="
+          cat vendor*.zip.* > vendor19.zip 2>/dev/null || cat vendor*.zip* > vendor19.zip 2>/dev/null || cat vendor* > vendor19.zip
+          ls -lh vendor19.zip
           unzip -o vendor19.zip -d ~/los19.1/vendor/oppo/A57
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
           ls ~/los19.1/vendor/oppo/A57/bin/hw/ | grep -i thortanium || echo "BERSIH, ga ada thortanium"
