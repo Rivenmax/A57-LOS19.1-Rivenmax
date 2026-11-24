@@ -66,7 +66,7 @@ jobs:
           echo "=== KERNEL PAKE PREBUILT, GA PERLU CLONE KERNEL LAGI ==="
           echo "Sukisu095 aman, ga diusik"
 
-      - name: Download vendor 19.1 - FIX UNSQUASHFS JANGAN MKDIR DULU
+      - name: Download vendor 19.1 - FIX UNSQUASHFS PAKE SUDO + NO-XATTRS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -86,9 +86,10 @@ jobs:
           python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
           ls -lh vendor.img
           file vendor.img
-          echo "=== EXTRACT PAKE UNSQUASHFS - JANGAN MKDIR DULU ==="
+          echo "=== EXTRACT PAKE SUDO UNSQUASHFS -NO-XATTRS ==="
           rm -rf /tmp/vendor_out
-          unsquashfs -d /tmp/vendor_out vendor.img
+          sudo unsquashfs -no-xattrs -d /tmp/vendor_out vendor.img
+          sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
           ls -lh /tmp/vendor_out/
           echo "=== COPY ISI VENDOR KE vendor/oppo/A57 ==="
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
