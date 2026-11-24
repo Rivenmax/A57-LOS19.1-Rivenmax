@@ -111,7 +111,7 @@ jobs:
           fi
           grep -r "android.hardware.light" . || echo "cek light manual"
 
-      - name: FIX Lunch + FIX BoardConfig TARGET_COPY_OUT_VENDOR + FIX Soong PATH_OVERRIDE_SOONG
+      - name: FIX Lunch + FIX BoardConfig + FIX Soong generated_kernel_includes JADI DUMMY
         run: |
           cd ~/los19.1/device/oppo/A57
           echo "=== FIX vendorsetup.sh ==="
@@ -137,12 +137,31 @@ jobs:
           grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
           grep "PREBUILT" BoardConfig.mk
           grep "PRODUCT_NAME" rivenmax_A57.mk
-          echo "=== FIX Soong - PATH_OVERRIDE_SOONG UNKNOWN VARIABLE ==="
+          echo "=== FIX Soong - generated_kernel_includes JADI DUMMY, BUKAN HAPUS SATU VARIABEL ==="
           cd ~/los19.1
-          cat vendor/lineage/build/soong/Android.bp | head -n 40
-          sed -i 's/\$(PATH_OVERRIDE_SOONG)//g' vendor/lineage/build/soong/Android.bp
-          grep -n "generated_kernel_includes" vendor/lineage/build/soong/Android.bp || echo "generated_kernel_includes udah dihapus / ga ada"
-          cat vendor/lineage/build/soong/Android.bp | head -n 40
+          cat vendor/lineage/build/soong/Android.bp
+          python3 - << 'PYEOF'
+          import pathlib, re
+          p = pathlib.Path("vendor/lineage/build/soong/Android.bp")
+          text = p.read_text()
+          # Hapus blok genrule generated_kernel_includes yang lama, ganti dummy yang ga butuh KERNEL_MAKE_CMD / PATH_OVERRIDE_SOONG
+          # Cari genrule yang namanya generated_kernel_includes, hapus sampe penutup bloknya
+          pattern = re.compile(r'genrule\s*\{\s*name:\s*"generated_kernel_includes".*?\n\}', re.DOTALL)
+          dummy = '''genrule {
+              name: "generated_kernel_includes",
+              cmd: "mkdir -p $(genDir) && touch $(genDir)/dummy.h",
+              out: ["dummy.h"],
+          }'''
+          if pattern.search(text):
+              text = pattern.sub(dummy, text, count=1)
+              print("PATCHED: generated_kernel_includes diganti dummy")
+          else:
+              # Kalo pola ga ketemu, timpa file dengan dummy aja
+              text = dummy + "\n"
+              print("PATCHED: file ditimpa dummy")
+          p.write_text(text)
+          print(p.read_text())
+          PYEOF
 
       - name: Build Rivenmax - PAKE LUNCH LANGSUNG, BUKAN BREAKFAST
         run: |
