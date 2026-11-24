@@ -111,7 +111,7 @@ jobs:
           fi
           grep -r "android.hardware.light" . || echo "cek light manual"
 
-      - name: FIX Lunch + FIX BoardConfig TARGET_COPY_OUT_VENDOR
+      - name: FIX Lunch + FIX BoardConfig TARGET_COPY_OUT_VENDOR + FIX Soong PATH_OVERRIDE_SOONG
         run: |
           cd ~/los19.1/device/oppo/A57
           echo "=== FIX vendorsetup.sh ==="
@@ -121,13 +121,28 @@ jobs:
           echo "=== FIX AndroidProducts.mk ==="
           grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
           cat AndroidProducts.mk
-          echo "=== FIX BoardConfig.mk - TARGET_COPY_OUT_VENDOR WAJIB vendor ==="
+          echo "=== FIX BoardConfig.mk - TARGET_COPY_OUT_VENDOR + PREBUILT KERNEL ==="
           cat BoardConfig.mk
           sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
           echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
-          echo "=== CEK HASIL ==="
+          sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
+          sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
+          sed -i '/BOARD_PREBUILT_BOOTIMAGE/d' BoardConfig.mk
+          sed -i '/TARGET_PREBUILT_KERNEL/d' BoardConfig.mk
+          echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
+          echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
+          echo "TARGET_PREBUILT_KERNEL := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
+          echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
+          echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
           grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
+          grep "PREBUILT" BoardConfig.mk
           grep "PRODUCT_NAME" rivenmax_A57.mk
+          echo "=== FIX Soong - PATH_OVERRIDE_SOONG UNKNOWN VARIABLE ==="
+          cd ~/los19.1
+          cat vendor/lineage/build/soong/Android.bp | head -n 40
+          sed -i 's/\$(PATH_OVERRIDE_SOONG)//g' vendor/lineage/build/soong/Android.bp
+          grep -n "generated_kernel_includes" vendor/lineage/build/soong/Android.bp || echo "generated_kernel_includes udah dihapus / ga ada"
+          cat vendor/lineage/build/soong/Android.bp | head -n 40
 
       - name: Build Rivenmax - PAKE LUNCH LANGSUNG, BUKAN BREAKFAST
         run: |
