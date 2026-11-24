@@ -136,7 +136,7 @@ jobs:
           echo "=== FIX AndroidProducts.mk ==="
           grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
           cat AndroidProducts.mk
-          echo "=== FIX BoardConfig.mk - TARGET_COPY_OUT_VENDOR + PREBUILT KERNEL ==="
+          echo "=== FIX BoardConfig.mk - TARGET_COPY_OUT_VENDOR + PREBUILT BOOT.IMG YANG BENER ==="
           cat BoardConfig.mk
           sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
           echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
@@ -144,15 +144,16 @@ jobs:
           sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
           sed -i '/BOARD_PREBUILT_BOOTIMAGE/d' BoardConfig.mk
           sed -i '/TARGET_PREBUILT_KERNEL/d' BoardConfig.mk
+          sed -i '/TARGET_NO_KERNEL/d' BoardConfig.mk
+          sed -i '/BOARD_KERNEL_IMAGE_NAME/d' BoardConfig.mk
           echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
           echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
-          echo "TARGET_PREBUILT_KERNEL := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
+          echo "TARGET_NO_KERNEL := true" >> BoardConfig.mk
           echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
-          echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
           grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
-          grep "PREBUILT" BoardConfig.mk
+          grep "PREBUILT\|NO_KERNEL" BoardConfig.mk
           grep "PRODUCT_NAME" rivenmax_A57.mk
-          echo "=== FIX Soong - generated_kernel_includes JADI DUMMY, BUKAN HAPUS SATU VARIABEL ==="
+          echo "=== FIX Soong - generated_kernel_includes JADI DUMMY ==="
           cd ~/los19.1
           cat vendor/lineage/build/soong/Android.bp
           python3 - << 'PYEOF'
@@ -189,10 +190,12 @@ jobs:
           export _JAVA_OPTIONS="-Xmx4g -XX:+UseParallelGC"
           export ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx4g"
           free -h
+          df -h
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
-          mka bacon -j2
-          ls -lh $OUT/*.zip
+          mka bacon -j2 || mka otapackage -j2
+          echo "=== CEK HASIL ZIP ==="
+          ls -lh out/target/product/A57/*.zip || ls -lh $OUT/*.zip
           df -h
           free -h
 
