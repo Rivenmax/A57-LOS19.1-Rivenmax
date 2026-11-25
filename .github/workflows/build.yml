@@ -59,9 +59,9 @@ jobs:
           rm -rf .repo
           df -h
 
-      - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS
+      - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS - SKIP APK
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ 【entity-github¦canonical_name=GitHub】.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
@@ -76,11 +76,11 @@ jobs:
           sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
-          echo "=== BIKIN A57-vendor.mk OTOMATIS DARI HASIL BONGKARAN ==="
+          echo "=== BIKIN A57-vendor.mk OTOMATIS - SKIP APK BIAR GA ERROR BUILD_PREBUILT ==="
           cd ~/los19.1/vendor/oppo/A57
-          echo "# Rivenmax - Auto generated from vendor.img 19.1" > A57-vendor.mk
+          echo "# Rivenmax - Auto generated from vendor.img 19.1 - APK di-skip" > A57-vendor.mk
           echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
-          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" | sort | while read F; do
+          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" ! -name "*.apk" | sort | while read F; do
             REL=$(echo $F | sed 's|^\./||')
             echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
           done
@@ -88,13 +88,16 @@ jobs:
           echo "" > BoardConfigVendor.mk
           echo "# Rivenmax - vendor board config" >> BoardConfigVendor.mk
           echo "LOCAL_PATH := vendor/oppo/A57" > Android.mk
+          echo "=== CEK APK KE-SKIP APA NGGAK ==="
+          grep -c "\.apk" A57-vendor.mk || echo "0 APK, aman, ga ada yang ke-copy"
+          grep "CneApp" A57-vendor.mk || echo "CneApp udah ke-skip, aman"
           ls -lh A57-vendor.mk BoardConfigVendor.mk Android.mk
           head -n 20 A57-vendor.mk
           wc -l A57-vendor.mk
           rm -rf /tmp/vendor_dl
           df -h
 
-      - name: FIX Rivenmax - Baterai awet + Lockscreen mati total - CUMA TAMBAH, GA TIMPA
+      - name: FIX Rivenmax - Baterai awet + Lockscreen mati total + Jaga libril biar IMEI ga 0
         run: |
           cd ~/los19.1/device/oppo/A57
           cat >> device.mk << 'EOF'
@@ -109,6 +112,10 @@ jobs:
           sed -i 's/Ricky/Rivenmax/g' rivenmax_A57.mk || true
           sed -i 's/ryki/rivenmax/g' rivenmax_A57.mk || true
           cat rivenmax_A57.mk
+          echo "=== CEK LIBRIL 19.1 BIAR IMEI GA 0 ==="
+          ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so || echo "libril 32 ga ada"
+          ls -lh ~/los19.1/vendor/oppo/A57/lib64/libril.so || echo "libril 64 ga ada"
+          ls -lh ~/los19.1/vendor/oppo/A57/bin/rild || echo "rild ga ada"
 
       - name: FIX Lights dari 22.1 - CUMA 2 FILE, BUKAN SEMUA VENDOR 22.1
         env:
@@ -127,8 +134,6 @@ jobs:
           cp -v /tmp/v22out/bin/hw/android.hardware.light@2.0-service.A57 ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57 || echo "lights service 22.1 ga ketemu, pake 19.1 aja"
           cp -v /tmp/v22out/lib/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib/hw/lights.msm8937.so || echo "lights lib 22.1 ga ketemu, pake 19.1 aja"
           cp -v /tmp/v22out/lib64/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib64/hw/lights.msm8937.so || true
-          echo "=== UPDATE A57-vendor.mk BIAR LIGHTS 22.1 KE-COPY ==="
-          grep -q "lights.msm8937" ~/los19.1/vendor/oppo/A57/A57-vendor.mk || echo "    vendor/oppo/A57/lib/hw/lights.msm8937.so:vendor/lib/hw/lights.msm8937.so" >> ~/los19.1/vendor/oppo/A57/A57-vendor.mk
           rm -rf /tmp/vendor22 /tmp/v22out
           df -h
 
