@@ -65,6 +65,18 @@ jobs:
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           cat .repo/local_manifests/*.xml
           repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+          echo "=== SEBELUM BERSIH-BERSIH ==="
+          df -h
+          du -sh .repo || true
+          echo "=== HAPUS .repo BIAR DISK LEGA - UDAH GA DIPAKE LAGI ABIS SYNC ==="
+          rm -rf .repo
+          echo "=== HAPUS PREBUILT YANG GA KEPAKE ==="
+          rm -rf prebuilts/clang/host/linux-x86/clang-r416183b || true
+          rm -rf prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 || true
+          rm -rf prebuilts/android-emulator || true
+          rm -rf development/docs || true
+          rm -rf external/chromium-webview || true
+          echo "=== SESUDAH BERSIH-BERSIH ==="
           df -h
           free -h
 
@@ -79,6 +91,7 @@ jobs:
           ls -lh device/oppo/A57/
           ls -lh device/oppo/A57/prebuilt/boot.img
           echo "Sukisu095 aman, ga diusik"
+          df -h
 
       - name: Download vendor 19.1 - FIX UNSQUASHFS PAKE SUDO + NO-XATTRS
         env:
@@ -104,6 +117,8 @@ jobs:
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
           ls ~/los19.1/vendor/oppo/A57/bin/hw/ | grep -i thortanium || echo "BERSIH, ga ada thortanium"
+          rm -rf /tmp/vendor_dl
+          df -h
 
       - name: FIX Device Tree Otomatis - LO GA PERLU EDIT DI HP LAGI
         run: |
