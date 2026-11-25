@@ -59,7 +59,7 @@ jobs:
           rm -rf .repo
           df -h
 
-      - name: Download vendor 19.1 yang udah ijo
+      - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -76,13 +76,27 @@ jobs:
           sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
+          echo "=== BIKIN A57-vendor.mk OTOMATIS DARI HASIL BONGKARAN ==="
+          cd ~/los19.1/vendor/oppo/A57
+          echo "# Rivenmax - Auto generated from vendor.img 19.1" > A57-vendor.mk
+          echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
+          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" | sort | while read F; do
+            REL=$(echo $F | sed 's|^\./||')
+            echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
+          done
+          sed -i '$ s/ \\$//' A57-vendor.mk
+          echo "" > BoardConfigVendor.mk
+          echo "# Rivenmax - vendor board config" >> BoardConfigVendor.mk
+          echo "LOCAL_PATH := vendor/oppo/A57" > Android.mk
+          ls -lh A57-vendor.mk BoardConfigVendor.mk Android.mk
+          head -n 20 A57-vendor.mk
+          wc -l A57-vendor.mk
           rm -rf /tmp/vendor_dl
           df -h
 
       - name: FIX Rivenmax - Baterai awet + Lockscreen mati total - CUMA TAMBAH, GA TIMPA
         run: |
           cd ~/los19.1/device/oppo/A57
-          echo "=== TAMBAH BATERE AWET DI device.mk ==="
           cat >> device.mk << 'EOF'
           # RIVENMAX - BATERE AWET + LOCKSCREEN MATI TOTAL
           PRODUCT_PROPERTY_OVERRIDES += \
@@ -92,8 +106,6 @@ jobs:
               persist.sys.doze.always_on=0 \
               ro.vendor.display.cabl=0
           EOF
-          cat device.mk | tail -n 20
-          echo "=== BERSIHIN SISA RICKY / LINEAGE KALO MASIH ADA ==="
           sed -i 's/Ricky/Rivenmax/g' rivenmax_A57.mk || true
           sed -i 's/ryki/rivenmax/g' rivenmax_A57.mk || true
           cat rivenmax_A57.mk
@@ -105,7 +117,6 @@ jobs:
           cd ~/los19.1
           mkdir -p /tmp/vendor22 && cd /tmp/vendor22
           gh release download v22.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
-          ls -lh
           cat vendor22-part-00.zip vendor22-part-01.zip vendor22-part-02.zip vendor22-part-03.zip vendor22-part-04.zip vendor22-part-05.zip vendor22-part-06.zip vendor22-part-07.zip > vendor22.new.dat.br || cat vendor22-part-*.zip > vendor22.new.dat.br
           brotli -d vendor22.new.dat.br -o vendor22.new.dat
           curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
@@ -113,10 +124,11 @@ jobs:
           rm -rf /tmp/v22out
           sudo unsquashfs -no-xattrs -d /tmp/v22out vendor22.img
           sudo chown -R $(whoami):$(whoami) /tmp/v22out
-          echo "=== TIMPA CUMA LIGHTS DOANG ==="
           cp -v /tmp/v22out/bin/hw/android.hardware.light@2.0-service.A57 ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57 || echo "lights service 22.1 ga ketemu, pake 19.1 aja"
           cp -v /tmp/v22out/lib/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib/hw/lights.msm8937.so || echo "lights lib 22.1 ga ketemu, pake 19.1 aja"
           cp -v /tmp/v22out/lib64/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib64/hw/lights.msm8937.so || true
+          echo "=== UPDATE A57-vendor.mk BIAR LIGHTS 22.1 KE-COPY ==="
+          grep -q "lights.msm8937" ~/los19.1/vendor/oppo/A57/A57-vendor.mk || echo "    vendor/oppo/A57/lib/hw/lights.msm8937.so:vendor/lib/hw/lights.msm8937.so" >> ~/los19.1/vendor/oppo/A57/A57-vendor.mk
           rm -rf /tmp/vendor22 /tmp/v22out
           df -h
 
