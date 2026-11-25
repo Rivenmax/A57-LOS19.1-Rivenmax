@@ -78,7 +78,7 @@ jobs:
           cd ~/los19.1/vendor/oppo/A57
           echo "# Rivenmax - Auto generated from vendor.img 19.1 - APK di-skip" > A57-vendor.mk
           echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
-          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" ! -name "*.apk" ! -path "*vintf*" ! -name "*compatibility_matrix*" ! -name "*manifest.xml" | sort | while read F; do
+          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" ! -name "*.apk" ! -path "*vintf*" ! -name "*compatibility_matrix*" ! -name "*manifest.xml" ! -name "*light*" ! -name "*lights*" | sort | while read F; do
             REL=$(echo $F | sed 's|^\./||')
             echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
           done
