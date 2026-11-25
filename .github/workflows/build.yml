@@ -160,7 +160,7 @@ jobs:
               rivenmax_A57-eng
           EOF
           cat AndroidProducts.mk
-          echo "=== FIX BoardConfig.mk - CUMA BOARD_PREBUILT_BOOTIMAGE, HAPUS TARGET_NO_KERNEL BIAR GA DOBEL ==="
+          echo "=== FIX BoardConfig.mk - BALIKIN BOARD_KERNEL_IMAGE_NAME ==="
           cat BoardConfig.mk
           sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
           sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
@@ -173,8 +173,9 @@ jobs:
           echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
           echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
           echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
+          echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
           grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
-          grep "PREBUILT" BoardConfig.mk
+          grep "PREBUILT\|KERNEL_IMAGE" BoardConfig.mk
 
       - name: FIX Layar ga mau mati - Balikin Lights ke A57
         run: |
