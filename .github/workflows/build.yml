@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     steps:
-      - name: Free Disk Space - PAKE ACTION RESMI
+      - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -19,23 +19,14 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - name: Tambah SWAP 8GB + Cek disk - BIAR GA OOM LAGI
+      - name: Tambah SWAP 8GB
         run: |
-          free -h
-          df -h
           sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
-          echo "vm.swappiness=60" | sudo tee -a /etc/sysctl.conf
-          sudo sysctl -p || true
           free -h
-          swapon --show
-
-      - name: Cek disk abis dibersihin
-        run: |
           df -h
-          free -h
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,19 +35,14 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full e2fsprogs squashfs-tools
-          if ! command -v repo >/dev/null 2>&1; then
-            mkdir -p ~/bin
-            curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-            chmod a+x ~/bin/repo
-          fi
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
-          export PATH="$HOME/bin:$PATH"
-          repo --version || ~/bin/repo --version
           git config --global user.name "Rivenmax"
           git config --global user.email "rivenmax@build.local"
-          git config --global color.ui false
 
-      - name: Repo init 19.1 murni - MANIFEST KOSONG
+      - name: Repo init 19.1 + Manifest Rivenmax
         run: |
           mkdir -p ~/los19.1 && cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
@@ -65,34 +51,15 @@ jobs:
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           cat .repo/local_manifests/*.xml
           repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
-          echo "=== SEBELUM BERSIH-BERSIH ==="
+          echo "=== CEK DEVICE TREE + KERNEL ==="
+          ls -lh device/oppo/A57/rivenmax_A57.mk
+          ls -lh device/oppo/A57/BoardConfig.mk
+          ls -lh kernel/oppo/msm8937/Makefile | head
           df -h
-          du -sh .repo || true
-          echo "=== HAPUS .repo BIAR DISK LEGA ==="
           rm -rf .repo
-          rm -rf prebuilts/clang/host/linux-x86/clang-r416183b || true
-          rm -rf prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 || true
-          rm -rf prebuilts/android-emulator || true
-          rm -rf development/docs || true
-          rm -rf external/chromium-webview || true
-          echo "=== SESUDAH BERSIH-BERSIH ==="
-          df -h
-          free -h
-
-      - name: Clone device tree Rivenmax - UDAH ADA, GA NOT FOUND LAGI
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
-          rm -rf device/oppo/A57
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/Rivenmax/android_device_oppo_A57.git" -b main --depth 1 device/oppo/A57
-          ls -lh device/oppo/A57/
-          ls -lh device/oppo/A57/prebuilt/boot.img
-          echo "Sukisu095 aman, ga diusik"
           df -h
 
-      - name: Download vendor 19.1 - FIX UNSQUASHFS PAKE SUDO + NO-XATTRS
+      - name: Download vendor 19.1 yang udah ijo
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -100,86 +67,58 @@ jobs:
           mkdir -p vendor/oppo/A57
           mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
           gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
-          ls -lh
           cat vendor-part-00.zip vendor-part-01.zip vendor-part-02.zip vendor-part-03.zip vendor-part-04.zip vendor-part-05.zip vendor-part-06.zip > vendor.new.dat.br
-          ls -lh vendor.new.dat.br
           brotli -d vendor.new.dat.br -o vendor.new.dat
-          ls -lh vendor.new.dat
           curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
           python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
-          ls -lh vendor.img
-          file vendor.img
           rm -rf /tmp/vendor_out
           sudo unsquashfs -no-xattrs -d /tmp/vendor_out vendor.img
           sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
-          ls -lh /tmp/vendor_out/
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
-          ls ~/los19.1/vendor/oppo/A57/bin/hw/ | grep -i thortanium || echo "BERSIH, ga ada thortanium"
           rm -rf /tmp/vendor_dl
           df -h
 
-      - name: FIX Device Tree - JANGAN TIMPA, CUMA TAMBAHIN YANG KURANG
+      - name: FIX Rivenmax - Baterai awet + Lockscreen mati total - CUMA TAMBAH, GA TIMPA
         run: |
           cd ~/los19.1/device/oppo/A57
-          echo "=== ISI ASLI DARI GITHUB LO - INI YANG PENTING ==="
-          echo "--- rivenmax_A57.mk asli ---"
+          echo "=== TAMBAH BATERE AWET DI device.mk ==="
+          cat >> device.mk << 'EOF'
+          # RIVENMAX - BATERE AWET + LOCKSCREEN MATI TOTAL
+          PRODUCT_PROPERTY_OVERRIDES += \
+              ro.vendor.power.boost=0 \
+              persist.vendor.powerhal.enable=0 \
+              ro.vendor.qti.sys.fw.bg_apps_limit=32 \
+              persist.sys.doze.always_on=0 \
+              ro.vendor.display.cabl=0
+          EOF
+          cat device.mk | tail -n 20
+          echo "=== BERSIHIN SISA RICKY / LINEAGE KALO MASIH ADA ==="
+          sed -i 's/Ricky/Rivenmax/g' rivenmax_A57.mk || true
+          sed -i 's/ryki/rivenmax/g' rivenmax_A57.mk || true
           cat rivenmax_A57.mk
-          echo "--- device.mk asli ---"
-          cat device.mk
-          echo "--- BoardConfig.mk asli ---"
-          cat BoardConfig.mk
-          echo "--- AndroidProducts.mk asli ---"
-          cat AndroidProducts.mk
-          echo "--- vendorsetup.sh asli ---"
-          cat vendorsetup.sh
-          echo "=== HAPUS YANG BIKIN TABRAKAN DOANG, GA TIMPA FILE ==="
-          sed -i '/add_lunch_combo/d' vendorsetup.sh
-          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
-          grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
-          echo "=== TAMBAHIN YANG KURANG DI BoardConfig.mk - KALO UDAH ADA, GA DITAMBAH LAGI ==="
-          grep -q "TARGET_ARCH :=" BoardConfig.mk || echo "TARGET_ARCH := arm64" >> BoardConfig.mk
-          grep -q "TARGET_ARCH_VARIANT" BoardConfig.mk || echo "TARGET_ARCH_VARIANT := armv8-a" >> BoardConfig.mk
-          grep -q "TARGET_CPU_ABI" BoardConfig.mk || echo "TARGET_CPU_ABI := arm64-v8a" >> BoardConfig.mk
-          grep -q "TARGET_2ND_ARCH :=" BoardConfig.mk || echo "TARGET_2ND_ARCH := arm" >> BoardConfig.mk
-          grep -q "TARGET_2ND_CPU_ABI" BoardConfig.mk || echo "TARGET_2ND_CPU_ABI := armeabi-v7a" >> BoardConfig.mk
-          grep -q "TARGET_BOARD_PLATFORM" BoardConfig.mk || echo "TARGET_BOARD_PLATFORM := msm8937" >> BoardConfig.mk
-          grep -q "TARGET_BOOTLOADER_BOARD_NAME" BoardConfig.mk || echo "TARGET_BOOTLOADER_BOARD_NAME := MSM8937" >> BoardConfig.mk
-          grep -q "BOARD_SYSTEMIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_SYSTEMIMAGE_PARTITION_SIZE := 3221225472" >> BoardConfig.mk
-          grep -q "BOARD_VENDORIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_VENDORIMAGE_PARTITION_SIZE := 536870912" >> BoardConfig.mk
-          grep -q "BOARD_BOOTIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864" >> BoardConfig.mk
-          grep -q "BOARD_RECOVERYIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_RECOVERYIMAGE_PARTITION_SIZE := 67108864" >> BoardConfig.mk
-          grep -q "BOARD_CACHEIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_CACHEIMAGE_PARTITION_SIZE := 268435456" >> BoardConfig.mk
-          grep -q "BOARD_USERDATAIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_USERDATAIMAGE_PARTITION_SIZE := 10737418240" >> BoardConfig.mk
-          grep -q "BOARD_FLASH_BLOCK_SIZE" BoardConfig.mk || echo "BOARD_FLASH_BLOCK_SIZE := 131072" >> BoardConfig.mk
-          grep -q "TARGET_USERIMAGES_USE_EXT4" BoardConfig.mk || echo "TARGET_USERIMAGES_USE_EXT4 := true" >> BoardConfig.mk
-          grep -q "TARGET_COPY_OUT_VENDOR" BoardConfig.mk || echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
-          grep -q "BOARD_KERNEL_IMAGE_NAME" BoardConfig.mk || echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
-          grep -q "BOARD_PREBUILT_BOOTIMAGE" BoardConfig.mk || echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
-          sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
-          sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
-          echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
-          echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
-          echo "=== HASIL AKHIR BoardConfig.mk ==="
-          cat BoardConfig.mk
-          echo "=== HAPUS PRODUCT_COPY_FILES boot.img DI device.mk BIAR GA DOBEL ==="
-          sed -i '/prebuilt\/boot.img:boot.img/d' device.mk
-          cat device.mk
 
-      - name: FIX Layar ga mau mati - Balikin Lights ke A57
+      - name: FIX Lights dari 22.1 - CUMA 2 FILE, BUKAN SEMUA VENDOR 22.1
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cd ~/los19.1/device/oppo/A57
-          grep -r "oppo_thortanium" . || echo "udah bersih, ga ada oppo_thortanium"
-          grep -r "legacy_rild" . || echo "udah bersih, ga ada legacy_rild"
-          if grep -rql "oppo_thortanium" .; then
-            sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .)
-            echo "FIXED: oppo_thortanium -> A57"
-          fi
-          if grep -rql "legacy_rild" .; then
-            sed -i '/legacy_rild/d' $(grep -rl "legacy_rild" .)
-            echo "FIXED: legacy_rild dihapus"
-          fi
-          grep -r "android.hardware.light" . || echo "cek light manual"
+          cd ~/los19.1
+          mkdir -p /tmp/vendor22 && cd /tmp/vendor22
+          gh release download v22.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
+          ls -lh
+          cat vendor22-part-00.zip vendor22-part-01.zip vendor22-part-02.zip vendor22-part-03.zip vendor22-part-04.zip vendor22-part-05.zip vendor22-part-06.zip vendor22-part-07.zip > vendor22.new.dat.br || cat vendor22-part-*.zip > vendor22.new.dat.br
+          brotli -d vendor22.new.dat.br -o vendor22.new.dat
+          curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
+          python3 sdat2img.py vendor22.transfer.list vendor22.new.dat vendor22.img
+          rm -rf /tmp/v22out
+          sudo unsquashfs -no-xattrs -d /tmp/v22out vendor22.img
+          sudo chown -R $(whoami):$(whoami) /tmp/v22out
+          echo "=== TIMPA CUMA LIGHTS DOANG ==="
+          cp -v /tmp/v22out/bin/hw/android.hardware.light@2.0-service.A57 ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57 || echo "lights service 22.1 ga ketemu, pake 19.1 aja"
+          cp -v /tmp/v22out/lib/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib/hw/lights.msm8937.so || echo "lights lib 22.1 ga ketemu, pake 19.1 aja"
+          cp -v /tmp/v22out/lib64/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib64/hw/lights.msm8937.so || true
+          rm -rf /tmp/vendor22 /tmp/v22out
+          df -h
 
       - name: FIX Soong generated_kernel_includes JADI DUMMY
         run: |
@@ -196,49 +135,37 @@ jobs:
           }'''
           if pattern.search(text):
               text = pattern.sub(dummy, text, count=1)
-              print("PATCHED: generated_kernel_includes diganti dummy")
+              print("PATCHED")
           else:
               text = dummy + "\n"
-              print("PATCHED: file ditimpa dummy")
           p.write_text(text)
-          print(p.read_text())
           PYEOF
 
-      - name: Build Rivenmax - PAKE droid DULU BARU bacon, BIAR KE-COMPILE BENERAN
+      - name: Build Rivenmax - PAKE droid DULU BARU bacon
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
           export ALLOW_MISSING_DEPENDENCIES=true
-          export TARGET_KERNEL_CLANG_VERSION=11.0.1
           export USE_CCACHE=0
           export CCACHE_DISABLE=1
           export SOONG_JOBS=2
           export NINJA_JOBS=2
           export MAKE_JOBS=2
           export _JAVA_OPTIONS="-Xmx4g -XX:+UseParallelGC"
-          export ANDROID_JACK_VM_ARGS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx4g"
-          free -h
-          df -h
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
-          echo "=== BUILD DROID DULU - INI YANG NG-COMPILE BENERAN ==="
           mka droid -j2 || true
           echo "=== CEK ABIS DROID ==="
           ls -lh out/target/product/A57/*.img || echo "ABIS DROID MASIH GA ADA .img"
           du -sh out/ || true
           df -h
-          echo "=== BARU BUILD BACON ==="
           mka bacon -j2 || true
           echo "=== DIAGNOSTIK ==="
           df -h
           ls -lh out/target/product/A57/ || echo "FOLDER A57 GA ADA"
-          ls -lh out/target/product/A57/*.img || echo "GA ADA .img SAMA SEKALI - BERARTI GA NG-COMPILE"
-          ls -lh out/target/product/A57/*.zip || echo "GA ADA .zip - MAKANYA ln GAGAL"
-          du -sh out/ || true
-          if [ ! -f out/target/product/A57/*.zip ]; then
-            echo "BACON GAGAL BIKIN ZIP, LIAT DIAGNOSTIK DI ATAS"
-            exit 1
-          fi
+          ls -lh out/target/product/A57/*.img || echo "GA ADA .img"
+          ls -lh out/target/product/A57/*.zip || echo "GA ADA .zip"
+          if [ ! -f out/target/product/A57/*.zip ]; then exit 1; fi
 
       - name: Sign pake key Rivenmax
         env:
@@ -261,7 +188,6 @@ jobs:
           echo "$SHARED_X509" | base64 -d > ~/.android-certs/shared.x509.pem
           echo "$MEDIA_PK8" | base64 -d > ~/.android-certs/media.pk8
           echo "$MEDIA_X509" | base64 -d > ~/.android-certs/media.x509.pem
-          ls -lh ~/.android-certs/
           ./build/tools/releasetools/sign_target_files_apks.py -o -d ~/.android-certs $OUT/obj/PACKAGING/target_files_intermediates/*.zip signed-target.zip
           ./build/tools/releasetools/ota_from_target_files.py -k ~/.android-certs/releasekey --block signed-target.zip rivenmax-19.1-A57-signed.zip
           ls -lh rivenmax-19.1-A57-signed.zip
