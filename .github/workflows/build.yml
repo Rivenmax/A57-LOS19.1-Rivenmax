@@ -51,7 +51,6 @@ jobs:
           cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           cat .repo/local_manifests/*.xml
           repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
-          echo "=== CEK DEVICE TREE + KERNEL ==="
           ls -lh device/oppo/A57/rivenmax_A57.mk
           ls -lh device/oppo/A57/BoardConfig.mk
           ls -lh kernel/oppo/msm8937/Makefile | head
@@ -61,7 +60,7 @@ jobs:
 
       - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS - SKIP APK
         env:
-          GH_TOKEN: ${{ github.com.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
@@ -76,7 +75,6 @@ jobs:
           sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
-          echo "=== BIKIN A57-vendor.mk OTOMATIS - SKIP APK BIAR GA ERROR BUILD_PREBUILT ==="
           cd ~/los19.1/vendor/oppo/A57
           echo "# Rivenmax - Auto generated from vendor.img 19.1 - APK di-skip" > A57-vendor.mk
           echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
@@ -88,19 +86,15 @@ jobs:
           echo "" > BoardConfigVendor.mk
           echo "# Rivenmax - vendor board config" >> BoardConfigVendor.mk
           echo "LOCAL_PATH := vendor/oppo/A57" > Android.mk
-          echo "=== CEK APK KE-SKIP APA NGGAK ==="
-          grep -c "\.apk" A57-vendor.mk || echo "0 APK, aman, ga ada yang ke-copy"
-          grep "CneApp" A57-vendor.mk || echo "CneApp udah ke-skip, aman"
-          ls -lh A57-vendor.mk BoardConfigVendor.mk Android.mk
-          head -n 20 A57-vendor.mk
-          wc -l A57-vendor.mk
+          grep -c "\.apk" A57-vendor.mk || echo "0 APK, aman"
+          ls -lh A57-vendor.mk
           rm -rf /tmp/vendor_dl
           df -h
 
       - name: FIX Rivenmax - Baterai awet + Lockscreen mati total + Jaga libril biar IMEI ga 0
         run: |
           cd ~/los19.1/device/oppo/A57
-          cat >> device.mk << 'EOF'
+          cat >> device.mk << 'EOF2'
           # RIVENMAX - BATERE AWET + LOCKSCREEN MATI TOTAL
           PRODUCT_PROPERTY_OVERRIDES += \
               ro.vendor.power.boost=0 \
@@ -108,16 +102,15 @@ jobs:
               ro.vendor.qti.sys.fw.bg_apps_limit=32 \
               persist.sys.doze.always_on=0 \
               ro.vendor.display.cabl=0
-          EOF
+          EOF2
           sed -i 's/Ricky/Rivenmax/g' rivenmax_A57.mk || true
           sed -i 's/ryki/rivenmax/g' rivenmax_A57.mk || true
           cat rivenmax_A57.mk
-          echo "=== CEK LIBRIL 19.1 BIAR IMEI GA 0 ==="
           ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so || echo "libril 32 ga ada"
           ls -lh ~/los19.1/vendor/oppo/A57/lib64/libril.so || echo "libril 64 ga ada"
           ls -lh ~/los19.1/vendor/oppo/A57/bin/rild || echo "rild ga ada"
 
-      - name: FIX Lights dari 22.1 - CUMA 2 FILE, BUKAN SEMUA VENDOR 22.1
+      - name: FIX Lights dari 22.1 - CUMA 2 FILE
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -152,7 +145,6 @@ jobs:
           }'''
           if pattern.search(text):
               text = pattern.sub(dummy, text, count=1)
-              print("PATCHED")
           else:
               text = dummy + "\n"
           p.write_text(text)
@@ -172,12 +164,10 @@ jobs:
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
           mka droid -j2 || true
-          echo "=== CEK ABIS DROID ==="
           ls -lh out/target/product/A57/*.img || echo "ABIS DROID MASIH GA ADA .img"
           du -sh out/ || true
           df -h
           mka bacon -j2 || true
-          echo "=== DIAGNOSTIK ==="
           df -h
           ls -lh out/target/product/A57/ || echo "FOLDER A57 GA ADA"
           ls -lh out/target/product/A57/*.img || echo "GA ADA .img"
