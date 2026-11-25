@@ -4,4 +4,5 @@
   <remote name="codeberg" fetch="https://codeberg.org/TipzTeam/" />
   <project path="device/oppo/A57" name="android_device_oppo_A57" remote="rivenmax" revision="main" clone-depth="1" />
   <project path="kernel/oppo/msm8937" name="android_kernel_oppo_msm8937" remote="codeberg" revision="lineage-19.1" clone-depth="1" />
+  <project path="vendor/oppo/A57" name="android_vendor_oppo_A57" remote="rivenmax" revision="main" clone-depth="1" />
 </manifest>
