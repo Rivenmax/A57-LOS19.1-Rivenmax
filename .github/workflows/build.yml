@@ -58,42 +58,15 @@ jobs:
           rm -rf .repo
           df -h
 
-      - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS - SKIP APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cd ~/los19.1
-          mkdir -p vendor/oppo/A57
-          mkdir -p /tmp/vendor_dl && cd /tmp/vendor_dl
-          gh release download v19.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
-          cat vendor-part-00.zip vendor-part-01.zip vendor-part-02.zip vendor-part-03.zip vendor-part-04.zip vendor-part-05.zip vendor-part-06.zip > vendor.new.dat.br
-          brotli -d vendor.new.dat.br -o vendor.new.dat
-          curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
-          python3 sdat2img.py vendor19.transfer.list vendor.new.dat vendor.img
-          rm -rf /tmp/vendor_out
-          sudo unsquashfs -no-xattrs -d /tmp/vendor_out vendor.img
-          sudo chown -R $(whoami):$(whoami) /tmp/vendor_out
-          cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
-          ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
-          cd ~/los19.1/vendor/oppo/A57
-          echo "# Rivenmax - dari proprietary-files.txt, bukan find semua file" > A57-vendor.mk
-          echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
-          grep -v "^#" ~/los19.1/device/oppo/A57/proprietary-files.txt | grep -v "^$" | grep -v ".apk" | grep -v "vintf" | grep -v "compatibility_matrix" | grep -v "manifest.xml" | grep -v "light" | while read F; do
-            REL=$(echo $F | cut -d: -f1 | cut -d";" -f1 | xargs)
-            if [ -f "$REL" ]; then
-              echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
-            fi
-          done
-          sed -i '$ s/ \\$//' A57-vendor.mk
-          echo "" > BoardConfigVendor.mk
-          echo "# Rivenmax - vendor board config" >> BoardConfigVendor.mk
-          echo "LOCAL_PATH := vendor/oppo/A57" > Android.mk
-          grep -c "\.apk" A57-vendor.mk || echo "0 APK, aman"
-          ls -lh A57-vendor.mk
-          rm -rf /tmp/vendor_dl
-          df -h
-
-      - name: FIX Rivenmax - Baterai awet + Lockscreen mati total + Jaga libril biar IMEI ga 0
+      - name: CEK vendor dari repo Rivenmax - GA USAH DOWNLOAD LAGI
+    run: |
+      ls -lh ~/los19.1/vendor/oppo/A57/A57-vendor.mk
+      ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so ~/los19.1/vendor/oppo/A57/lib64/libril.so
+      ls ~/los19.1/vendor/oppo/A57/lib/ | wc -l
+      ls ~/los19.1/vendor/oppo/A57/lib64/ | wc -l
+      grep -c "PRODUCT_COPY_FILES" ~/los19.1/vendor/oppo/A57/A57-vendor.mk
+      echo "VENDOR DARI REPO, UDAH LENGKAP, GA USAH DOWNLOAD"
+    - name: FIX Rivenmax  - name: FIX Rivenmax - Baterai awet + Lockscreen mati total + Jaga libril biar IMEI ga 0
         run: |
           cd ~/los19.1/device/oppo/A57
           cat >> device.mk << 'EOF2'
@@ -111,26 +84,6 @@ jobs:
           ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so || echo "libril 32 ga ada"
           ls -lh ~/los19.1/vendor/oppo/A57/lib64/libril.so || echo "libril 64 ga ada"
           ls -lh ~/los19.1/vendor/oppo/A57/bin/rild || echo "rild ga ada"
-
-      - name: FIX Lights dari 22.1 - CUMA 2 FILE
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cd ~/los19.1
-          mkdir -p /tmp/vendor22 && cd /tmp/vendor22
-          gh release download v22.1-working --repo Rivenmax/A57-LOS19.1-Rivenmax
-          cat vendor22-part-00.zip vendor22-part-01.zip vendor22-part-02.zip vendor22-part-03.zip vendor22-part-04.zip vendor22-part-05.zip vendor22-part-06.zip vendor22-part-07.zip > vendor22.new.dat.br || cat vendor22-part-*.zip > vendor22.new.dat.br
-          brotli -d vendor22.new.dat.br -o vendor22.new.dat
-          curl -L -o sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
-          python3 sdat2img.py vendor22.transfer.list vendor22.new.dat vendor22.img
-          rm -rf /tmp/v22out
-          sudo unsquashfs -no-xattrs -d /tmp/v22out vendor22.img
-          sudo chown -R $(whoami):$(whoami) /tmp/v22out
-          cp -v /tmp/v22out/bin/hw/android.hardware.light@2.0-service.A57 ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57 || echo "lights service 22.1 ga ketemu, pake 19.1 aja"
-          cp -v /tmp/v22out/lib/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib/hw/lights.msm8937.so || echo "lights lib 22.1 ga ketemu, pake 19.1 aja"
-          cp -v /tmp/v22out/lib64/hw/lights.msm8937.so ~/los19.1/vendor/oppo/A57/lib64/hw/lights.msm8937.so || true
-          rm -rf /tmp/vendor22 /tmp/v22out
-          df -h
 
       - name: FIX Soong generated_kernel_includes JADI DUMMY
         run: |
