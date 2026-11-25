@@ -76,11 +76,13 @@ jobs:
           cp -r /tmp/vendor_out/* ~/los19.1/vendor/oppo/A57/ || cp -r /tmp/vendor_out/. ~/los19.1/vendor/oppo/A57/
           ls -lh ~/los19.1/vendor/oppo/A57/bin/hw/android.hardware.light@2.0-service.A57
           cd ~/los19.1/vendor/oppo/A57
-          echo "# Rivenmax - Auto generated from vendor.img 19.1 - APK di-skip" > A57-vendor.mk
+          echo "# Rivenmax - dari proprietary-files.txt, bukan find semua file" > A57-vendor.mk
           echo "PRODUCT_COPY_FILES += \\" >> A57-vendor.mk
-          find . -type f ! -name "A57-vendor.mk" ! -name "BoardConfigVendor.mk" ! -name "Android.mk" ! -name "*.apk" ! -path "*vintf*" ! -name "*compatibility_matrix*" ! -name "*manifest.xml" ! -name "*light*" ! -name "*lights*" | sort | while read F; do
-            REL=$(echo $F | sed 's|^\./||')
-            echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
+          grep -v "^#" ~/los19.1/device/oppo/A57/proprietary-files.txt | grep -v "^$" | grep -v ".apk" | grep -v "vintf" | grep -v "compatibility_matrix" | grep -v "manifest.xml" | grep -v "light" | while read F; do
+            REL=$(echo $F | cut -d: -f1 | cut -d";" -f1 | xargs)
+            if [ -f "$REL" ]; then
+              echo "    vendor/oppo/A57/$REL:vendor/$REL \\" >> A57-vendor.mk
+            fi
           done
           sed -i '$ s/ \\$//' A57-vendor.mk
           echo "" > BoardConfigVendor.mk
