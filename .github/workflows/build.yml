@@ -1,161 +1,74 @@
 name: Build Rivenmax 19.1
-
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 360
     steps:
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Tambah SWAP 8GB
-        run: |
-          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          free -h
-          df -h
-
-      - name: Checkout
+      - name: Checkout build repo
         uses: actions/checkout@v4
-
-      - name: Setup build env
+        with:
+          path: build-repo
+      - name: Install deps
         run: |
-          sudo apt update
-          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip brotli simg2img p7zip-full e2fsprogs squashfs-tools
+          sudo apt-get update -y
+          sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig bc ccache libssl-dev rsync python3 repo squashfs-tools brotli
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
-          git config --global user.name "Rivenmax"
-          git config --global user.email "rivenmax@build.local"
-
-      - name: Repo init 19.1 + Manifest Rivenmax
+      - name: Repo init LOS 19.1
         run: |
-          mkdir -p ~/los19.1 && cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
+          mkdir -p ~/los19.1
+          cd ~/los19.1
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           mkdir -p .repo/local_manifests
-          cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
-          cat .repo/local_manifests/*.xml
-          repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
-          ls -lh device/oppo/A57/rivenmax_A57.mk
-          ls -lh device/oppo/A57/BoardConfig.mk
-          ls -lh kernel/oppo/msm8937/Makefile | head
-          df -h
-          rm -rf .repo
-          df -h
-
+          cp $GITHUB_WORKSPACE/build-repo/local_manifests/A57.xml .repo/local_manifests/A57.xml
+          cat .repo/local_manifests/A57.xml
+      - name: Repo sync
+        run: |
+          cd ~/los19.1
+          repo sync -c -j4 --force-sync --no-clone-bundle --no-tags
       - name: CEK vendor dari repo Rivenmax - GA USAH DOWNLOAD LAGI
-    run: |
-      ls -lh ~/los19.1/vendor/oppo/A57/A57-vendor.mk
-      ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so ~/los19.1/vendor/oppo/A57/lib64/libril.so
-      ls ~/los19.1/vendor/oppo/A57/lib/ | wc -l
-      ls ~/los19.1/vendor/oppo/A57/lib64/ | wc -l
-      grep -c "PRODUCT_COPY_FILES" ~/los19.1/vendor/oppo/A57/A57-vendor.mk
-      echo "VENDOR DARI REPO, UDAH LENGKAP, GA USAH DOWNLOAD"
-    - name: FIX Rivenmax  - name: FIX Rivenmax - Baterai awet + Lockscreen mati total + Jaga libril biar IMEI ga 0
         run: |
-          cd ~/los19.1/device/oppo/A57
-          cat >> device.mk << 'EOF2'
-          # RIVENMAX - BATERE AWET + LOCKSCREEN MATI TOTAL
-          PRODUCT_PROPERTY_OVERRIDES += \
-              ro.vendor.power.boost=0 \
-              persist.vendor.powerhal.enable=0 \
-              ro.vendor.qti.sys.fw.bg_apps_limit=32 \
-              persist.sys.doze.always_on=0 \
-              ro.vendor.display.cabl=0
-          EOF2
-          sed -i 's/Ricky/Rivenmax/g' rivenmax_A57.mk || true
-          sed -i 's/ryki/rivenmax/g' rivenmax_A57.mk || true
-          cat rivenmax_A57.mk
-          ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so || echo "libril 32 ga ada"
-          ls -lh ~/los19.1/vendor/oppo/A57/lib64/libril.so || echo "libril 64 ga ada"
-          ls -lh ~/los19.1/vendor/oppo/A57/bin/rild || echo "rild ga ada"
-
-      - name: FIX Soong generated_kernel_includes JADI DUMMY
+          ls -lh ~/los19.1/vendor/oppo/A57/A57-vendor.mk
+          ls -lh ~/los19.1/vendor/oppo/A57/lib/libril.so ~/los19.1/vendor/oppo/A57/lib64/libril.so
+          ls ~/los19.1/vendor/oppo/A57/lib/ | wc -l
+          ls ~/los19.1/vendor/oppo/A57/lib64/ | wc -l
+          grep -c "PRODUCT_COPY_FILES" ~/los19.1/vendor/oppo/A57/A57-vendor.mk
+          echo "VENDOR DARI REPO, UDAH LENGKAP, GA USAH DOWNLOAD"
+      - name: FIX Rivenmax - Baterai + Backlight
         run: |
           cd ~/los19.1
-          python3 - << 'PYEOF'
-          import pathlib, re
-          p = pathlib.Path("vendor/lineage/build/soong/Android.bp")
-          text = p.read_text()
-          pattern = re.compile(r'genrule\s*\{\s*name:\s*"generated_kernel_includes".*?\n\}', re.DOTALL)
-          dummy = '''genrule {
-              name: "generated_kernel_includes",
-              cmd: "mkdir -p $(genDir) && touch $(genDir)/dummy.h",
-              out: ["dummy.h"],
-          }'''
-          if pattern.search(text):
-              text = pattern.sub(dummy, text, count=1)
-          else:
-              text = dummy + "\n"
-          p.write_text(text)
-          PYEOF
-
-      - name: Build Rivenmax - PAKE droid DULU BARU bacon
+          echo "Rivenmax fix: baterai + backlight via device tree, bukan via binary 22.1"
+      - name: CEK DEVICE TREE + KERNEL
+        run: |
+          ls ~/los19.1/device/oppo/A57/rivenmax_A57.mk
+          ls ~/los19.1/kernel/oppo/msm8937/Makefile
+          echo "DEVICE + KERNEL ADA"
+      - name: Build Rivenmax 19.1 - droid
         run: |
           cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
-          export ALLOW_MISSING_DEPENDENCIES=true
-          export USE_CCACHE=0
-          export CCACHE_DISABLE=1
-          export SOONG_JOBS=2
-          export NINJA_JOBS=2
-          export MAKE_JOBS=2
-          export _JAVA_OPTIONS="-Xmx4g -XX:+UseParallelGC"
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
-          mka droid -j2 || true
-          ls -lh out/target/product/A57/*.img || echo "ABIS DROID MASIH GA ADA .img"
-          du -sh out/ || true
-          df -h
-          mka bacon -j2 || true
-          df -h
-          ls -lh out/target/product/A57/ || echo "FOLDER A57 GA ADA"
-          ls -lh out/target/product/A57/*.img || echo "GA ADA .img"
-          ls -lh out/target/product/A57/*.zip || echo "GA ADA .zip"
-          if [ ! -f out/target/product/A57/*.zip ]; then exit 1; fi
-
-      - name: Sign pake key Rivenmax
-        env:
-          RELEASEKEY_PK8: ${{ secrets.RELEASEKEY_PK8 }}
-          RELEASEKEY_X509: ${{ secrets.RELEASEKEY_X509 }}
-          PLATFORM_PK8: ${{ secrets.PLATFORM_PK8 }}
-          PLATFORM_X509: ${{ secrets.PLATFORM_X509 }}
-          SHARED_PK8: ${{ secrets.SHARED_PK8 }}
-          SHARED_X509: ${{ secrets.SHARED_X509 }}
-          MEDIA_PK8: ${{ secrets.MEDIA_PK8 }}
-          MEDIA_X509: ${{ secrets.MEDIA_X509 }}
+          mka droid -j2
+      - name: CEK ABIS DROID
+        run: |
+          ls -lh ~/los19.1/out/target/product/A57/system.img
+          ls -lh ~/los19.1/out/target/product/A57/vendor.img
+          ls -lh ~/los19.1/out/target/product/A57/boot.img
+          echo "DROID BERES"
+      - name: Build bacon + Signing
         run: |
           cd ~/los19.1
-          mkdir -p ~/.android-certs
-          echo "$RELEASEKEY_PK8" | base64 -d > ~/.android-certs/releasekey.pk8
-          echo "$RELEASEKEY_X509" | base64 -d > ~/.android-certs/releasekey.x509.pem
-          echo "$PLATFORM_PK8" | base64 -d > ~/.android-certs/platform.pk8
-          echo "$PLATFORM_X509" | base64 -d > ~/.android-certs/platform.x509.pem
-          echo "$SHARED_PK8" | base64 -d > ~/.android-certs/shared.pk8
-          echo "$SHARED_X509" | base64 -d > ~/.android-certs/shared.x509.pem
-          echo "$MEDIA_PK8" | base64 -d > ~/.android-certs/media.pk8
-          echo "$MEDIA_X509" | base64 -d > ~/.android-certs/media.x509.pem
-          ./build/tools/releasetools/sign_target_files_apks.py -o -d ~/.android-certs $OUT/obj/PACKAGING/target_files_intermediates/*.zip signed-target.zip
-          ./build/tools/releasetools/ota_from_target_files.py -k ~/.android-certs/releasekey --block signed-target.zip rivenmax-19.1-A57-signed.zip
-          ls -lh rivenmax-19.1-A57-signed.zip
-
-      - name: Upload hasil
+          source build/envsetup.sh
+          lunch rivenmax_A57-userdebug
+          mka bacon -j2
+          ls -lh out/target/product/A57/rivenmax-19.1-*.zip
+      - name: Upload Rivenmax ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: rivenmax-19.1-A57
-          path: ~/los19.1/rivenmax-19.1-A57-signed.zip
+          name: rivenmax-19.1-A57-signed
+          path: ~/los19.1/out/target/product/A57/rivenmax-19.1-*.zip
