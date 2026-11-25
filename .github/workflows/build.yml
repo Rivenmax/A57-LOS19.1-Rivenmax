@@ -68,9 +68,8 @@ jobs:
           echo "=== SEBELUM BERSIH-BERSIH ==="
           df -h
           du -sh .repo || true
-          echo "=== HAPUS .repo BIAR DISK LEGA - UDAH GA DIPAKE LAGI ABIS SYNC ==="
+          echo "=== HAPUS .repo BIAR DISK LEGA ==="
           rm -rf .repo
-          echo "=== HAPUS PREBUILT YANG GA KEPAKE ==="
           rm -rf prebuilts/clang/host/linux-x86/clang-r416183b || true
           rm -rf prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 || true
           rm -rf prebuilts/android-emulator || true
@@ -120,77 +119,52 @@ jobs:
           rm -rf /tmp/vendor_dl
           df -h
 
-      - name: FIX Device Tree Otomatis - LO GA PERLU EDIT DI HP LAGI
+      - name: FIX Device Tree - JANGAN TIMPA, CUMA TAMBAHIN YANG KURANG
         run: |
           cd ~/los19.1/device/oppo/A57
-          echo "=== TIMPA rivenmax_A57.mk YANG BENER ==="
-          cat > rivenmax_A57.mk << 'EOF'
-          $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
-          $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
-          $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
-          $(call inherit-product, device/oppo/A57/device.mk)
-          PRODUCT_NAME := rivenmax_A57
-          PRODUCT_DEVICE := A57
-          PRODUCT_MANUFACTURER := OPPO
-          PRODUCT_BRAND := OPPO
-          PRODUCT_MODEL := OPPO A57
-          PRODUCT_GMS_CLIENTID_BASE := android-oppo
-          TARGET_VENDOR := oppo
-          TARGET_VENDOR_PRODUCT_NAME := A57
-          PRODUCT_BUILD_PROP_OVERRIDES += \
-              PRIVATE_BUILD_DESC="A57-user 7.1.1 N6F26Q eng.root.20250522.123456 release-keys" \
-              PRODUCT_NAME="A57" \
-              TARGET_DEVICE="A57"
-          BUILD_FINGERPRINT := OPPO/A57/A57:7.1.1/N6F26Q/161111:user/release-keys
-          EOF
+          echo "=== ISI ASLI DARI GITHUB LO - INI YANG PENTING ==="
+          echo "--- rivenmax_A57.mk asli ---"
           cat rivenmax_A57.mk
-          echo "=== TIMPA device.mk - HAPUS PRODUCT_COPY_FILES boot.img BIAR GA TABRAKAN ==="
-          cat > device.mk << 'EOF'
-          LOCAL_PATH := device/oppo/A57
-          TARGET_SPECIFIC_HEADER_PATH := $(LOCAL_PATH)/include
-          PRODUCT_PACKAGES += \
-              android.hardware.light@2.0-service.A57 \
-              android.hardware.light@2.0-impl \
-              liblights \
-              android.hardware.health@2.1-service \
-              android.hardware.health@2.1-impl
-          PRODUCT_PROPERTY_OVERRIDES += \
-              ro.vendor.build.security_patch=2025-05-22 \
-              ro.build.fingerprint=OPPO/A57/A57:7.1.1/N6F26Q/161111:user/release-keys
-          PRODUCT_AAPT_CONFIG := normal
-          PRODUCT_AAPT_PREF_CONFIG := xxhdpi
-          PRODUCT_AAPT_PREBUILT_DPI := xxhdpi xhdpi hdpi
-          EOF
+          echo "--- device.mk asli ---"
           cat device.mk
-          echo "=== FIX vendorsetup.sh ==="
-          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
-          cat vendorsetup.sh
-          echo "=== FIX AndroidProducts.mk ==="
-          cat > AndroidProducts.mk << 'EOF'
-          PRODUCT_MAKEFILES := \
-              $(LOCAL_DIR)/rivenmax_A57.mk
-          COMMON_LUNCH_CHOICES := \
-              rivenmax_A57-userdebug \
-              rivenmax_A57-user \
-              rivenmax_A57-eng
-          EOF
-          cat AndroidProducts.mk
-          echo "=== FIX BoardConfig.mk - BALIKIN BOARD_KERNEL_IMAGE_NAME ==="
+          echo "--- BoardConfig.mk asli ---"
           cat BoardConfig.mk
-          sed -i '/TARGET_COPY_OUT_VENDOR/d' BoardConfig.mk
+          echo "--- AndroidProducts.mk asli ---"
+          cat AndroidProducts.mk
+          echo "--- vendorsetup.sh asli ---"
+          cat vendorsetup.sh
+          echo "=== HAPUS YANG BIKIN TABRAKAN DOANG, GA TIMPA FILE ==="
+          sed -i '/add_lunch_combo/d' vendorsetup.sh
+          echo "# Rivenmax - lunch dihandle AndroidProducts.mk" > vendorsetup.sh
+          grep -q "COMMON_LUNCH_CHOICES" AndroidProducts.mk || echo "COMMON_LUNCH_CHOICES := rivenmax_A57-userdebug rivenmax_A57-user rivenmax_A57-eng" >> AndroidProducts.mk
+          echo "=== TAMBAHIN YANG KURANG DI BoardConfig.mk - KALO UDAH ADA, GA DITAMBAH LAGI ==="
+          grep -q "TARGET_ARCH :=" BoardConfig.mk || echo "TARGET_ARCH := arm64" >> BoardConfig.mk
+          grep -q "TARGET_ARCH_VARIANT" BoardConfig.mk || echo "TARGET_ARCH_VARIANT := armv8-a" >> BoardConfig.mk
+          grep -q "TARGET_CPU_ABI" BoardConfig.mk || echo "TARGET_CPU_ABI := arm64-v8a" >> BoardConfig.mk
+          grep -q "TARGET_2ND_ARCH :=" BoardConfig.mk || echo "TARGET_2ND_ARCH := arm" >> BoardConfig.mk
+          grep -q "TARGET_2ND_CPU_ABI" BoardConfig.mk || echo "TARGET_2ND_CPU_ABI := armeabi-v7a" >> BoardConfig.mk
+          grep -q "TARGET_BOARD_PLATFORM" BoardConfig.mk || echo "TARGET_BOARD_PLATFORM := msm8937" >> BoardConfig.mk
+          grep -q "TARGET_BOOTLOADER_BOARD_NAME" BoardConfig.mk || echo "TARGET_BOOTLOADER_BOARD_NAME := MSM8937" >> BoardConfig.mk
+          grep -q "BOARD_SYSTEMIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_SYSTEMIMAGE_PARTITION_SIZE := 3221225472" >> BoardConfig.mk
+          grep -q "BOARD_VENDORIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_VENDORIMAGE_PARTITION_SIZE := 536870912" >> BoardConfig.mk
+          grep -q "BOARD_BOOTIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864" >> BoardConfig.mk
+          grep -q "BOARD_RECOVERYIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_RECOVERYIMAGE_PARTITION_SIZE := 67108864" >> BoardConfig.mk
+          grep -q "BOARD_CACHEIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_CACHEIMAGE_PARTITION_SIZE := 268435456" >> BoardConfig.mk
+          grep -q "BOARD_USERDATAIMAGE_PARTITION_SIZE" BoardConfig.mk || echo "BOARD_USERDATAIMAGE_PARTITION_SIZE := 10737418240" >> BoardConfig.mk
+          grep -q "BOARD_FLASH_BLOCK_SIZE" BoardConfig.mk || echo "BOARD_FLASH_BLOCK_SIZE := 131072" >> BoardConfig.mk
+          grep -q "TARGET_USERIMAGES_USE_EXT4" BoardConfig.mk || echo "TARGET_USERIMAGES_USE_EXT4 := true" >> BoardConfig.mk
+          grep -q "TARGET_COPY_OUT_VENDOR" BoardConfig.mk || echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
+          grep -q "BOARD_KERNEL_IMAGE_NAME" BoardConfig.mk || echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
+          grep -q "BOARD_PREBUILT_BOOTIMAGE" BoardConfig.mk || echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
           sed -i '/TARGET_KERNEL_SOURCE/d' BoardConfig.mk
           sed -i '/TARGET_KERNEL_CONFIG/d' BoardConfig.mk
-          sed -i '/BOARD_PREBUILT_BOOTIMAGE/d' BoardConfig.mk
-          sed -i '/TARGET_PREBUILT_KERNEL/d' BoardConfig.mk
-          sed -i '/TARGET_NO_KERNEL/d' BoardConfig.mk
-          sed -i '/BOARD_KERNEL_IMAGE_NAME/d' BoardConfig.mk
-          echo "TARGET_COPY_OUT_VENDOR := vendor" >> BoardConfig.mk
           echo "TARGET_KERNEL_SOURCE :=" >> BoardConfig.mk
           echo "TARGET_KERNEL_CONFIG :=" >> BoardConfig.mk
-          echo "BOARD_PREBUILT_BOOTIMAGE := device/oppo/A57/prebuilt/boot.img" >> BoardConfig.mk
-          echo "BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb" >> BoardConfig.mk
-          grep "TARGET_COPY_OUT_VENDOR" BoardConfig.mk
-          grep "PREBUILT\|KERNEL_IMAGE" BoardConfig.mk
+          echo "=== HASIL AKHIR BoardConfig.mk ==="
+          cat BoardConfig.mk
+          echo "=== HAPUS PRODUCT_COPY_FILES boot.img DI device.mk BIAR GA DOBEL ==="
+          sed -i '/prebuilt\/boot.img:boot.img/d' device.mk
+          cat device.mk
 
       - name: FIX Layar ga mau mati - Balikin Lights ke A57
         run: |
@@ -230,7 +204,7 @@ jobs:
           print(p.read_text())
           PYEOF
 
-      - name: Build Rivenmax - PAKE -j2 + DIAGNOSTIK KALO BACON FAIL
+      - name: Build Rivenmax - PAKE droid DULU BARU bacon, BIAR KE-COMPILE BENERAN
         run: |
           cd ~/los19.1
           export PATH="$HOME/bin:$PATH"
@@ -247,6 +221,13 @@ jobs:
           df -h
           source build/envsetup.sh
           lunch rivenmax_A57-userdebug
+          echo "=== BUILD DROID DULU - INI YANG NG-COMPILE BENERAN ==="
+          mka droid -j2 || true
+          echo "=== CEK ABIS DROID ==="
+          ls -lh out/target/product/A57/*.img || echo "ABIS DROID MASIH GA ADA .img"
+          du -sh out/ || true
+          df -h
+          echo "=== BARU BUILD BACON ==="
           mka bacon -j2 || true
           echo "=== DIAGNOSTIK ==="
           df -h
