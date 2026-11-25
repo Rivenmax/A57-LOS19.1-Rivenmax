@@ -61,7 +61,7 @@ jobs:
 
       - name: Download vendor 19.1 + BIKIN A57-vendor.mk OTOMATIS - SKIP APK
         env:
-          GH_TOKEN: ${{ 【entity-github¦canonical_name=GitHub】.token }}
+          GH_TOKEN: ${{ github.com.token }}
         run: |
           cd ~/los19.1
           mkdir -p vendor/oppo/A57
