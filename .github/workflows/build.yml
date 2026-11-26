@@ -56,6 +56,13 @@ jobs:
           ls ~/los19.1/device/oppo/A57/rivenmax_A57.mk
           ls ~/los19.1/kernel/oppo/msm8937/Makefile
           echo "DEVICE + KERNEL ADA"
+      - name: FIX PATH_OVERRIDE_SOONG
+        run: |
+          cd ~/los19.1
+          sed -n '20,28p' vendor/lineage/build/soong/android.bp
+          sed -i 's/\$(PATH_OVERRIDE_SOONG)//g' vendor/lineage/build/soong/android.bp
+          sed -n '20,28p' vendor/lineage/build/soong/android.bp
+
       - name: Build Rivenmax 19.1 - droid
         run: |
           cd ~/los19.1
