@@ -59,9 +59,18 @@ jobs:
       - name: FIX PATH_OVERRIDE_SOONG
         run: |
           cd ~/los19.1
-          sed -n '20,28p' vendor/lineage/build/soong/android.bp
-          sed -i 's/\$(PATH_OVERRIDE_SOONG)//g' vendor/lineage/build/soong/android.bp
-          sed -n '20,28p' vendor/lineage/build/soong/android.bp
+          echo "=== CARI FILE-NYA ==="
+          find . -path "*lineage/build/soong/android.bp" 2>/dev/null | head -5
+          F=$(find . -path "*lineage/build/soong/android.bp" 2>/dev/null | head -1)
+          if [ -n "$F" ]; then
+            echo "KETEMU: $F"
+            sed -n '20,28p' "$F"
+            sed -i 's/\$(PATH_OVERRIDE_SOONG)//g' "$F"
+            sed -n '20,28p' "$F"
+          else
+            echo "BELUM ADA, SKIP, NANTI DI-PATCH PAS BUILD DROID"
+            ls vendor/ | head -20
+          fi
 
       - name: Build Rivenmax 19.1 - droid
         run: |
