@@ -111,12 +111,8 @@ jobs:
           export USE_CCACHE=0
           export CCACHE_DISABLE=1
           source build/envsetup.sh
-          echo "=== CEK PRODUCT MK ==="
-          ls device/oppo/A57/*.mk
-          if [ -f device/oppo/A57/rivenmax_A57.mk ]; then PRODUCT_NAME="rivenmax_A57"; elif [ -f device/oppo/A57/lineage_A57.mk ]; then PRODUCT_NAME="lineage_A57"; else PRODUCT_NAME="rivenmax_A57"; fi
-          echo "PRODUCT=$PRODUCT_NAME"
-          breakfast $PRODUCT_NAME
-          brunch $PRODUCT_NAME
+          breakfast A57
+          brunch A57
           ls -lh $OUT/*.zip
           echo "=== CEK DISK ABIS BUILD ==="
           df -h
