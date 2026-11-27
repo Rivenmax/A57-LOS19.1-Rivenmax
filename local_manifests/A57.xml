@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
-  <remote name="github" fetch="https://github.com/" />
-  <project name="Rivenmax/android_device_oppo_A57" path="device/oppo/A57" remote="github" revision="main" />
-  <project name="Rivenmax/android_kernel_oppo_msm8937" path="kernel/oppo/msm8937" remote="github" revision="main" />
+  <remote name="rivenmax" fetch="https://github.com/" />
+  <project name="Rivenmax/android_device_oppo_A57" path="device/oppo/A57" remote="rivenmax" revision="main" />
+  <project name="Rivenmax/android_kernel_oppo_msm8937" path="kernel/oppo/msm8937" remote="rivenmax" revision="main" />
+  <project name="Rivenmax/android_vendor_oppo_A57" path="vendor/oppo/A57" remote="rivenmax" revision="main" />
 </manifest>
