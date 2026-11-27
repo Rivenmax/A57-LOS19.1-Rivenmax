@@ -92,17 +92,17 @@ jobs:
           export USE_CCACHE=0
           export CCACHE_DISABLE=1
           source build/envsetup.sh
-          echo "=== CEK PRODUCT MK ==="
+          echo "=== CEK PRODUCT MK 100% RIVENMAX ==="
           ls device/oppo/A57/*.mk
-          if [ -f device/oppo/A57/rivenmax_A57.mk ]; then PRODUCT_NAME="rivenmax_A57"; elif [ -f device/oppo/A57/lineage_A57.mk ]; then PRODUCT_NAME="lineage_A57"; else PRODUCT_NAME="rivenmax_A57"; fi
-          echo "PRODUCT=$PRODUCT_NAME"
-          breakfast $PRODUCT_NAME
-          echo "=== FIX-IN-DROID: patch PATH_OVERRIDE abis breakfast ==="
+          grep -r "PRODUCT_NAME" device/oppo/A57/rivenmax_A57.mk
+          grep -r -i "riky" device/oppo/A57/ || echo "BERSIH, GA ADA RIKY"
+          lunch rivenmax_A57-userdebug
+          echo "=== FIX-IN-DROID: patch PATH_OVERRIDE abis lunch ==="
           F=$(find . -path "*lineage/build/soong/android.bp" 2>/dev/null | head -1)
           echo "KETEMU: $F"
           if [ -n "$F" ]; then sed -n '20,28p' "$F"; sed -i 's/$(PATH_OVERRIDE_SOONG)//g' "$F"; sed -n '20,28p' "$F"; fi
           echo "=== FIX-IN-DROID SELESAI ==="
-          brunch $PRODUCT_NAME
+          mka bacon
           ls -lh $OUT/*.zip
           df -h
 
