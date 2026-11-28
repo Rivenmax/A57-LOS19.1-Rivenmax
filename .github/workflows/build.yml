@@ -7,122 +7,57 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Free Disk Space - PAKE ACTION RESMI
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Cek disk abis dibersihin
-        run: |
-          df -h
-          free -h
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup build env
+      - name: Repo init
         run: |
-          sudo apt update
-          sudo apt install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python3-pip
-          if ! command -v repo >/dev/null 2>&1; then mkdir -p ~/bin; curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo; chmod a+x ~/bin/repo; fi
-          echo "$HOME/bin" >> $GITHUB_PATH
-          export PATH="$HOME/bin:$PATH"
-          repo --version || ~/bin/repo --version
-          git config --global user.name "Rivenmax"
-          git config --global user.email "rivenmax@build.local"
-          git config --global color.ui false
-
-      - name: Repo init 19.1 + PAKE MANIFEST BARU YANG UDAH BENER
-        run: |
-          mkdir -p ~/los19.1 && cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
-          mkdir -p .repo/local_manifests
-          cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
-          echo "=== ISI MANIFEST BARU YANG KEPAKE ==="
-          cat .repo/local_manifests/*.xml
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
-          echo "=== CEK DEVICE DARI MANIFEST ==="
-          ls -lh device/oppo/A57/
-          ls -lh kernel/oppo/msm8937/ | head -20
-          echo "=== CEK DISK ABIS SYNC ==="
-          df -h
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          export PATH=~/bin:$PATH
+          mkdir -p ~/Rivenmax
+          cd ~/Rivenmax
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
+          cp $GITHUB_WORKSPACE/.repo/local_manifests/A57.xml .repo/local_manifests/A57.xml || mkdir -p .repo/local_manifests && cp $GITHUB_WORKSPACE/.repo/local_manifests/A57.xml .repo/local_manifests/A57.xml
+          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
 
       - name: CEK vendor
         run: |
-          cd ~/los19.1
-          ls -lh vendor/oppo/A57/ | head -30
-          echo "=== CEK JANGAN SAMPE ADA oppo_thortanium DI VENDOR 19.1 ==="
-          ls vendor/oppo/A57/bin/hw/ 2>/dev/null | grep -i thortanium || echo "BERSIH, ga ada thortanium"
+          cd ~/Rivenmax
+          echo "=== CEK vendor ==="
+          ls vendor/oppo/A57/
+          ls vendor/oppo/A57/lib/ | wc -l
+          ls vendor/oppo/A57/lib64/ | wc -l
 
       - name: FIX Rivenmax
         run: |
-          cd ~/los19.1/device/oppo/A57
-          grep -r "oppo_thortanium" . || echo "udah bersih, ga ada oppo_thortanium"
-          grep -r "legacy_rild" . || echo "udah bersih, ga ada legacy_rild"
-          if grep -rql "oppo_thortanium" .; then sed -i 's/oppo_thortanium/A57/g' $(grep -rl "oppo_thortanium" .); echo "FIXED: oppo_thortanium -> A57"; fi
-          if grep -rql "legacy_rild" .; then sed -i '/legacy_rild/d' $(grep -rl "legacy_rild" .); echo "FIXED: legacy_rild dihapus"; fi
-          grep -r "android.hardware.light" . || echo "cek light manual"
+          cd ~/Rivenmax
+          echo "=== FIX Rivenmax ==="
+          ls device/oppo/A57/
 
-      - name: CEK DEVICE TREE + KERNEL
+      - name: CEK DEVICE
         run: |
-          cd ~/los19.1
-          ls -lh device/oppo/A57/ | head -30
-          ls -lh device/oppo/A57/*.mk
-          ls -lh kernel/oppo/msm8937/ | head -20
+          cd ~/Rivenmax
+          echo "=== CEK DEVICE ==="
+          ls device/oppo/A57/rivenmax_A57.mk
+          ls device/oppo/A57/
+          ls kernel/oppo/msm8937/ | head -20
 
-      - name: FIX PATH_OVERRIDE_SOONG
+      - name: Build droid
         run: |
-          cd ~/los19.1
-          F=$(find . -path "*lineage/build/soong/android.bp" 2>/dev/null | head -1)
-          if [ -n "$F" ]; then echo "KETEMU: $F"; sed -n '20,28p' "$F"; sed -i 's/$(PATH_OVERRIDE_SOONG)//g' "$F"; sed -n '20,28p' "$F"; else echo "BELUM ADA, SKIP, NANTI DI-PATCH PAS BUILD DROID"; ls vendor/ | head -20; fi
-
-      - name: Build Rivenmax 19.1 - droid
-        run: |
-          cd ~/los19.1
-          export PATH="$HOME/bin:$PATH"
-          export ALLOW_MISSING_DEPENDENCIES=true
-          export TARGET_KERNEL_CLANG_VERSION=11.0.1
-          export USE_CCACHE=0
-          export CCACHE_DISABLE=1
+          cd ~/Rivenmax
           source build/envsetup.sh
-          echo "=== CEK PRODUCT MK 100% RIVENMAX ==="
-          ls device/oppo/A57/*.mk
-          grep -r "PRODUCT_NAME" device/oppo/A57/rivenmax_A57.mk
-          grep -r -i "riky" device/oppo/A57/ || echo "BERSIH, GA ADA RIKY"
           lunch rivenmax_A57-userdebug
-          echo "=== FIX-IN-DROID: patch PATH_OVERRIDE abis lunch ==="
-          F=$(find . -path "*lineage/build/soong/android.bp" 2>/dev/null | head -1)
-          echo "KETEMU: $F"
-          if [ -n "$F" ]; then sed -n '20,28p' "$F"; sed -i 's/$(PATH_OVERRIDE_SOONG)//g' "$F"; sed -n '20,28p' "$F"; fi
-          echo "=== FIX-IN-DROID SELESAI ==="
-          mka bacon
-          ls -lh $OUT/*.zip
-          df -h
-
-      - name: Build bacon + Signing
-        env:
-          RELEASEKEY_PK8: ${{ secrets.RELEASEKEY_PK8 }}
-          RELEASEKEY_X509: ${{ secrets.RELEASEKEY_X509 }}
-          PLATFORM_PK8: ${{ secrets.PLATFORM_PK8 }}
-          PLATFORM_X509: ${{ secrets.PLATFORM_X509 }}
-          SHARED_PK8: ${{ secrets.SHARED_PK8 }}
-          SHARED_X509: ${{ secrets.SHARED_X509 }}
-          MEDIA_PK8: ${{ secrets.MEDIA_PK8 }}
-          MEDIA_X509: ${{ secrets.MEDIA_X509 }}
-        run: |
-          cd ~/los19.1
-          mkdir -p ~/.android-certs
-          if [ -n "$RELEASEKEY_PK8" ]; then echo "$RELEASEKEY_PK8" | base64 -d > ~/.android-certs/releasekey.pk8; echo "$RELEASEKEY_X509" | base64 -d > ~/.android-certs/releasekey.x509.pem; echo "$PLATFORM_PK8" | base64 -d > ~/.android-certs/platform.pk8; echo "$PLATFORM_X509" | base64 -d > ~/.android-certs/platform.x509.pem; echo "$SHARED_PK8" | base64 -d > ~/.android-certs/shared.pk8; echo "$SHARED_X509" | base64 -d > ~/.android-certs/shared.x509.pem; echo "$MEDIA_PK8" | base64 -d > ~/.android-certs/media.pk8; echo "$MEDIA_X509" | base64 -d > ~/.android-certs/media.x509.pem; ./build/tools/releasetools/sign_target_files_apks.py -o -d ~/.android-certs $OUT/obj/PACKAGING/target_files_intermediates/*.zip signed-target.zip; ./build/tools/releasetools/ota_from_target_files.py -k ~/.android-certs/releasekey --block signed-target.zip lineage-19.1-RIVENMAX-A57-signed.zip; ls -lh lineage-19.1-RIVENMAX-A57-signed.zip; else echo "GA ADA SECRET KEY, SKIP SIGNING"; ls -lh $OUT/*.zip; cp $OUT/*.zip lineage-19.1-RIVENMAX-A57-signed.zip; fi
+          echo "=== FIX PATH_OVERRIDE ==="
+          export PATH_OVERRIDE_SOONG=""
+          sed -i 's/${PATH_OVERRIDE_SOONG}//g' vendor/lineage/build/soong/Android.bp
+          grep -n "generated_kernel_includes" -A 3 vendor/lineage/build/soong/Android.bp
+          echo "=== BUILD ==="
+          mka bacon -j$(nproc)
 
       - name: Upload hasil
         uses: actions/upload-artifact@v4
         with:
-          name: lineage-19.1-RIVENMAX-A57
-          path: ~/los19.1/lineage-19.1-RIVENMAX-A57-signed.zip
+          name: lineage-19.1-RIVENMAX-A57-signed
+          path: ~/Rivenmax/out/target/product/A57/*.zip
