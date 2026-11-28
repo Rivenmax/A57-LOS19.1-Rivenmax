@@ -35,7 +35,7 @@ jobs:
           cp $(find $GITHUB_WORKSPACE -name "A57.xml" | head -1) .repo/local_manifests/A57.xml
           cat .repo/local_manifests/A57.xml
           df -h
-          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --depth=1
+          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
 
       - name: CEK vendor
         run: |
