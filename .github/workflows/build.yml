@@ -28,7 +28,7 @@ jobs:
           export PATH=~/bin:$PATH
           mkdir -p ~/Rivenmax
           cd ~/Rivenmax
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
           echo "=== CARI A57.xml ==="
           find $GITHUB_WORKSPACE -name "A57.xml" | head -20
           mkdir -p .repo/local_manifests
