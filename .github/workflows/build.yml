@@ -14,28 +14,32 @@ jobs:
         run: |
           echo "=== SEBELUM ==="
           df -h
-          sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift 2>/dev/null || true
+          sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift /usr/lib/jvm /usr/local/go /opt/microsoft /usr/share/miniconda /usr/local/julia /opt/az 2>/dev/null || true
           sudo docker system prune -af 2>/dev/null || true
           sudo apt-get clean 2>/dev/null || true
+          sudo rm -rf /home/runner/.cache /home/runner/actions-runner/cached 2>/dev/null || true
           echo "=== SESUDAH ==="
           df -h
 
       - name: Repo init
         run: |
           mkdir -p ~/bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-          chmod a+x ~/bin/repo
-          export PATH=~/bin:$PATH
+          git clone --depth 1 https://gerrit.googlesource.com/git-repo ~/repo-tool
+          chmod +x ~/repo-tool/repo
+          export PATH=~/repo-tool:$PATH
+          which repo
+          repo --version
           mkdir -p ~/Rivenmax
           cd ~/Rivenmax
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           echo "=== CARI A57.xml ==="
           find $GITHUB_WORKSPACE -name "A57.xml" | head -20
           mkdir -p .repo/local_manifests
           cp $(find $GITHUB_WORKSPACE -name "A57.xml" | head -1) .repo/local_manifests/A57.xml
           cat .repo/local_manifests/A57.xml
           df -h
-          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
+          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags --current-branch --depth=1
+          df -h
 
       - name: CEK vendor
         run: |
