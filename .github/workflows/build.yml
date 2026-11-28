@@ -10,6 +10,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Free disk
+        run: |
+          echo "=== SEBELUM ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet /opt/hostedtoolcache /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift 2>/dev/null || true
+          sudo docker system prune -af 2>/dev/null || true
+          sudo apt-get clean 2>/dev/null || true
+          echo "=== SESUDAH ==="
+          df -h
+
       - name: Repo init
         run: |
           mkdir -p ~/bin
@@ -18,14 +28,14 @@ jobs:
           export PATH=~/bin:$PATH
           mkdir -p ~/Rivenmax
           cd ~/Rivenmax
-          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
+          repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs --depth=1
           echo "=== CARI A57.xml ==="
           find $GITHUB_WORKSPACE -name "A57.xml" | head -20
-          ls -R $GITHUB_WORKSPACE | head -100
           mkdir -p .repo/local_manifests
           cp $(find $GITHUB_WORKSPACE -name "A57.xml" | head -1) .repo/local_manifests/A57.xml
           cat .repo/local_manifests/A57.xml
-          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
+          df -h
+          repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --depth=1
 
       - name: CEK vendor
         run: |
@@ -34,6 +44,7 @@ jobs:
           ls vendor/oppo/A57/
           ls vendor/oppo/A57/lib/ | wc -l
           ls vendor/oppo/A57/lib64/ | wc -l
+          df -h
 
       - name: FIX Rivenmax
         run: |
