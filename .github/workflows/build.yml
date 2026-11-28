@@ -19,7 +19,12 @@ jobs:
           mkdir -p ~/Rivenmax
           cd ~/Rivenmax
           repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --git-lfs
-          cp $GITHUB_WORKSPACE/.repo/local_manifests/A57.xml .repo/local_manifests/A57.xml || mkdir -p .repo/local_manifests && cp $GITHUB_WORKSPACE/.repo/local_manifests/A57.xml .repo/local_manifests/A57.xml
+          echo "=== CARI A57.xml ==="
+          find $GITHUB_WORKSPACE -name "A57.xml" | head -20
+          ls -R $GITHUB_WORKSPACE | head -100
+          mkdir -p .repo/local_manifests
+          cp $(find $GITHUB_WORKSPACE -name "A57.xml" | head -1) .repo/local_manifests/A57.xml
+          cat .repo/local_manifests/A57.xml
           repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
 
       - name: CEK vendor
